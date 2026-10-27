@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-ink font-body antialiased;
+    background: linear-gradient(180deg, #f4f3f6 0%, #ffffff 420px);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: #ff007a;
+    color: white;
+  }
+
+  *:focus-visible {
+    outline: 2px solid #ff007a;
+    outline-offset: 2px;
+  }
+}
