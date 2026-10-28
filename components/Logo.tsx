@@ -10,7 +10,7 @@ export function Logo({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src="/logo-symbol.svg"
-        alt="Aventure"
+        alt="avante CRM"
         className={`h-7 w-7 ${className}`}
       />
     );
@@ -20,7 +20,7 @@ export function Logo({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/logo.svg"
-      alt="Aventure"
+      alt="avante CRM"
       className={`h-6 w-auto ${className}`}
     />
   );

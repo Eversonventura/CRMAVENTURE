@@ -35,10 +35,9 @@ export function AppHeader({
   return (
     <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white/90 px-4 py-3 backdrop-blur sm:px-8">
       <div className="flex items-center gap-4">
-        <Link href="/crm/diario" aria-label="CRM Aventure">
+        <Link href="/crm/diario" aria-label="avante CRM">
           <Logo className="h-5" />
         </Link>
-        <span className="hidden text-sm font-medium text-ink sm:inline">CRM</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
