@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
 import { AppHeader } from "@/components/AppHeader";
+import { PoweredBy } from "@/components/PoweredBy";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </p>
         )}
       </main>
+      <PoweredBy className="border-t border-border" />
     </div>
   );
 }

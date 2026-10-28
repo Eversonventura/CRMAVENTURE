@@ -1,5 +1,6 @@
 import { Logo } from "@/components/Logo";
 import { GrowthLine } from "@/components/GrowthLine";
+import { PoweredBy } from "@/components/PoweredBy";
 import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
@@ -25,6 +26,7 @@ export default function LoginPage() {
           <p className="mb-8 mt-1.5 text-sm text-muted">Use o e-mail e a senha da sua conta.</p>
           <LoginForm />
         </div>
+        <PoweredBy className="mt-8" />
       </div>
     </div>
   );
