@@ -30,7 +30,7 @@ export function LoginForm() {
       setError(
         error.message === "Invalid login credentials"
           ? "E-mail ou senha incorretos."
-          : "Não foi possível entrar. Tente novamente."
+          : `Não foi possível entrar: ${error.message}`
       );
       setLoading(false);
       return;

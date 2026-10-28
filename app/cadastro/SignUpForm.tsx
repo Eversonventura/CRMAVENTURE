@@ -40,7 +40,7 @@ export function SignUpForm() {
       setError(
         signUpError.message.toLowerCase().includes("already")
           ? "Esse e-mail já tem cadastro. Entre com a sua senha."
-          : "Não foi possível criar a conta. Tente novamente."
+          : `Não foi possível criar a conta: ${signUpError.message}`
       );
       return;
     }
