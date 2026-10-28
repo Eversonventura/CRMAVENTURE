@@ -1,16 +1,19 @@
-# Log de atualizações — avante CRM
+# Log de atualizações — avantecrm
 
 Registro de cada atualização, da mais recente para a mais antiga.
 Cada entrada indica a sprint, o que mudou e o commit.
 
 ## 2026-10-28 — Sprint 2
+- **Nome oficial agora é "avantecrm"** (uma palavra só): logo refeita sem o espaço (`public/logo.svg`), título da aba, nome do app instalado, texto alternativo e remetente dos e-mails.
+
+## 2026-10-28 — Sprint 2
 - **Rodapé "powered by Aventure"** em todas as telas (logadas, login, cadastro, definir senha, validação de link). Componente `components/PoweredBy.tsx`; logo original guardada em `public/logo-aventure.svg`.
-- **Renomeado para "avante CRM"**: título da aba, nome do app instalado (manifest) e remetente dos e-mails.
+- **Renomeado para "avantecrm"**: título da aba, nome do app instalado (manifest) e remetente dos e-mails.
 - **Cabeçalho**: removido o texto "CRM" solto ao lado da logo (já faz parte da logo).
 - Commit: `1fb1adb`
 
 ## 2026-10-28 — Sprint 2
-- **Nova logo "avante CRM"** no estilo, cor (#FF007A) e tipografia da logo da Aventure; substitui `public/logo.svg`. O ícone compacto ("a!") foi mantido.
+- **Nova logo "avantecrm"** no estilo, cor (#FF007A) e tipografia da logo da Aventure; substitui `public/logo.svg`. O ícone compacto ("a!") foi mantido.
 - Commit: `eb95e2a`
 
 ## Antes — Sprint 1

@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "avante CRM",
+    name: "avantecrm",
     short_name: "CRM",
     description: "CRM de prospecção, funil e metas",
     start_url: "/",
