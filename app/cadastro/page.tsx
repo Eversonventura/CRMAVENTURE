@@ -1,4 +1,5 @@
 import { Logo } from "@/components/Logo";
+import { PoweredBy } from "@/components/PoweredBy";
 import { SignUpForm } from "./SignUpForm";
 
 export default function CadastroPage() {
@@ -14,6 +15,7 @@ export default function CadastroPage() {
         </p>
         <SignUpForm />
       </div>
+      <PoweredBy className="mt-12" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Logo } from "@/components/Logo";
+import { PoweredBy } from "@/components/PoweredBy";
 import { SetPasswordForm } from "./SetPasswordForm";
 
 export default function DefinirSenhaPage() {
@@ -16,6 +17,7 @@ export default function DefinirSenhaPage() {
         </p>
         <SetPasswordForm />
       </div>
+      <PoweredBy className="mt-12" />
     </div>
   );
 }

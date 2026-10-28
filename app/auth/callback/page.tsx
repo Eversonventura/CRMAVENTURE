@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Logo } from "@/components/Logo";
+import { PoweredBy } from "@/components/PoweredBy";
 
 function parseHashParams(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -85,6 +86,7 @@ export default function AuthCallbackPage() {
       ) : (
         <p className="text-sm text-muted">Validando link...</p>
       )}
+      <PoweredBy className="mt-12" />
     </div>
   );
 }

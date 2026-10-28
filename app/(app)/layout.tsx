@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
+import { PoweredBy } from "@/components/PoweredBy";
 import { AppHeader } from "@/components/AppHeader";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </p>
         )}
       </main>
+      <footer className="border-t border-border py-4">
+        <PoweredBy />
+      </footer>
     </div>
   );
 }

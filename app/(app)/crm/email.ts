@@ -9,7 +9,7 @@ export async function sendCrmEmail(to: string[], subject: string, text: string) 
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || "CRM Aventure <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM_EMAIL || "avante CRM <onboarding@resend.dev>",
         to,
         subject,
         text,
