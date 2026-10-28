@@ -34,6 +34,13 @@ export type DiarioData = {
     items: { opportunityId: string; companyName: string; contactName: string | null; missingRequired: string[]; missingOptional: string[] }[];
   } | null;
   canEditGoals: boolean;
+  sales: {
+    monthLabel: string;
+    closings: number;
+    revenue: number;
+    goalClosings: { target: number; personal: boolean } | null;
+    goalRevenue: { target: number; personal: boolean } | null;
+  };
   approach: {
     goal: number;
     done: number;
@@ -111,6 +118,54 @@ function Progress({ done, goal }: { done: number; goal: number }) {
         {done > goal ? ` (+${done - goal})` : ""}
       </span>
     </div>
+  );
+}
+
+// Vendas do mês da pessoa: fechamentos e receita x meta (pessoal ou, sem ela, da equipe).
+function SalesCard({ sales }: { sales: DiarioData["sales"] }) {
+  const items = [
+    { label: "Fechamentos", text: String(sales.closings), value: sales.closings, goal: sales.goalClosings, goalText: (n: number) => String(Math.round(n)) },
+    { label: "Receita fechada", text: money(sales.revenue), value: sales.revenue, goal: sales.goalRevenue, goalText: (n: number) => money(n) },
+  ];
+  return (
+    <section className={card}>
+      <SectionTitle hint="Negócios que chegaram a Fechado neste mês, contra a meta. Meta pessoal quando existe; senão, a da equipe.">
+        Vendas no mês · <span className="capitalize">{sales.monthLabel}</span>
+      </SectionTitle>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {items.map((it) => {
+          const tone = it.goal ? GOAL_TONE_CLASSES[classifyGoal(it.value, it.goal.target)] : null;
+          const pct = it.goal && it.goal.target > 0 ? Math.min(100, Math.round((it.value / it.goal.target) * 100)) : 0;
+          return (
+            <div key={it.label}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs text-muted">{it.label}</span>
+                {it.goal ? (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tone!.chip}`}>
+                    {it.goal.target > 0 ? `${Math.round((it.value / it.goal.target) * 100)}%` : "—"}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted">sem meta</span>
+                )}
+              </div>
+              <p className="font-display text-xl text-ink">
+                {it.text}
+                {it.goal && (
+                  <span className="text-sm font-normal text-muted">
+                    {" "}
+                    / {it.goalText(it.goal.target)}
+                    {!it.goal.personal && " (equipe)"}
+                  </span>
+                )}
+              </p>
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface2">
+                {tone && <div className={`h-full ${tone.bar}`} style={{ width: `${pct}%` }} />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -511,6 +566,8 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
       </div>
 
       {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}
+
+      <SalesCard sales={data.sales} />
 
       {data.overdue.length > 0 && (
         <section className="rounded-xl border border-red-200 bg-red-50/50 p-4">

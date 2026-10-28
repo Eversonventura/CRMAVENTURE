@@ -5,6 +5,7 @@ import { getCrmAccessContext } from "../lib";
 import { brtToday } from "../diario/dates";
 import { classifyGoal, GOAL_METRICS, GOAL_TONE_CLASSES } from "../goals";
 import { GoalsEditor } from "../GoalsEditor";
+import type { SalesGoalMap } from "../sales-goals";
 import { OlympicCard } from "./OlympicCard";
 import { olympicTargets, readOlympicSettings } from "../olympic";
 
@@ -40,6 +41,109 @@ function format(unit: "count" | "money" | "percent" | "days", v: number) {
   if (unit === "percent") return `${v.toFixed(0)}%`;
   if (unit === "days") return `${v.toFixed(0)}d`;
   return String(Math.round(v));
+}
+
+function Bar({ value, goal, direction = "higher" }: { value: number; goal: number | null; direction?: "higher" | "lower" }) {
+  if (goal === null) return <div className="h-2 w-full rounded-full bg-surface2" />;
+  const tone = GOAL_TONE_CLASSES[classifyGoal(value, goal, direction)];
+  const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 100;
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
+      <div className={`h-full ${tone.bar}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function pctLabel(value: number, goal: number | null) {
+  return goal !== null && goal > 0 ? `${Math.round((value / goal) * 100)}%` : "sem meta";
+}
+
+// Destaque da tela: vendas fechadas e receita x meta, da equipe e por vendedor.
+function SalesPanel({
+  periodLabel,
+  team,
+  sellers,
+}: {
+  periodLabel: string;
+  team: { count: number; goalCount: number; revenue: number; goalRevenue: number } | null;
+  sellers: { id: string; name: string; count: number; revenue: number; goalCount: number | null; goalRevenue: number | null }[];
+}) {
+  return (
+    <section className="mb-4 rounded-xl border border-border bg-surface p-5">
+      <h2 className="font-display text-base font-medium text-ink">Vendas e fechamentos</h2>
+      <p className="mt-0.5 text-xs text-muted">{periodLabel} · negócios que chegaram a Fechado e a receita deles, contra a meta.</p>
+
+      {team && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {[
+            { label: "Fechamentos da equipe", value: team.count, goal: team.goalCount, text: `${team.count} de ${Math.round(team.goalCount)}` },
+            { label: "Receita fechada da equipe", value: team.revenue, goal: team.goalRevenue, text: `${money(team.revenue)} de ${money(team.goalRevenue)}` },
+          ].map((t) => (
+            <div key={t.label} className="rounded-lg border border-border bg-white p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-xs text-muted">{t.label}</p>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${GOAL_TONE_CLASSES[classifyGoal(t.value, t.goal)].chip}`}>{pctLabel(t.value, t.goal)}</span>
+              </div>
+              <p className="mt-1 font-display text-xl text-ink">{t.text}</p>
+              <div className="mt-2">
+                <Bar value={t.value} goal={t.goal} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted">
+              <th className="py-2 pr-4 font-normal">Vendedor</th>
+              <th className="py-2 pr-4 font-normal">Fechamentos</th>
+              <th className="py-2 font-normal">Receita fechada</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sellers.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-3 text-muted">Nenhuma pessoa na conta.</td>
+              </tr>
+            ) : (
+              sellers.map((s) => (
+                <tr key={s.id} className="border-b border-border last:border-0">
+                  <td className="py-2.5 pr-4 font-medium text-ink">{s.name}</td>
+                  <td className="py-2.5 pr-4">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-ink">
+                        {s.count}
+                        {s.goalCount !== null ? ` / ${Math.round(s.goalCount)}` : ""}
+                      </span>
+                      <span className="text-muted">{pctLabel(s.count, s.goalCount)}</span>
+                    </div>
+                    <div className="mt-1 max-w-[220px]">
+                      <Bar value={s.count} goal={s.goalCount} />
+                    </div>
+                  </td>
+                  <td className="py-2.5">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-ink">
+                        {money(s.revenue)}
+                        {s.goalRevenue !== null ? ` / ${money(s.goalRevenue)}` : ""}
+                      </span>
+                      <span className="text-muted">{pctLabel(s.revenue, s.goalRevenue)}</span>
+                    </div>
+                    <div className="mt-1 max-w-[260px]">
+                      <Bar value={s.revenue} goal={s.goalRevenue} />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[11px] text-muted">Metas pessoais definidas em Metas → Metas de vendas por vendedor.</p>
+    </section>
+  );
 }
 
 function Block({ title, hint, children, wide }: { title: string; hint?: string; children: React.ReactNode; wide?: boolean }) {
@@ -90,7 +194,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     meetingsDone, meetingsScheduled, overdueRes, historyRes, todayTasksRes,
     recRes,
   ] = await Promise.all([
-    supabase.from("crm_goals").select("metric, target").is("owner_id", null),
+    supabase.from("crm_goals").select("metric, target, owner_id"),
     supabase.from("crm_stages").select("id, name, position, pipeline_id, role, kind").order("position"),
     supabase.from("crm_pipelines").select("id, name").order("position"),
     supabase.rpc("team_member_picker_options"),
@@ -120,7 +224,14 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   ]);
 
   const targets: Record<string, number> = {};
-  for (const g of (goalsRes.data as { metric: string; target: number }[] | null) ?? []) targets[g.metric] = Number(g.target);
+  // Metas da equipe (owner nulo) e metas de vendas por vendedor.
+  const memberGoals: SalesGoalMap = {};
+  for (const g of (goalsRes.data as { metric: string; target: number; owner_id: string | null }[] | null) ?? []) {
+    if (g.owner_id === null) targets[g.metric] = Number(g.target);
+    else if (g.metric === "fechamentos" || g.metric === "receita_fechada") {
+      memberGoals[g.owner_id] = { ...memberGoals[g.owner_id], [g.metric]: Number(g.target) };
+    }
+  }
 
   // --- Meta olímpica: dinheiro NOVO recebido no mês (regime de caixa) ---
   const { data: recRows } = recRes;
@@ -172,6 +283,30 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       : 0;
   const inNegotiation = open.reduce((s, o) => s + Number(o.estimated_value ?? 0), 0);
 
+  // Vendas por vendedor no período: fechamentos e receita fechada x meta pessoal.
+  const salesByMember = new Map<string, { count: number; revenue: number }>();
+  for (const o of closed) {
+    if (!o.responsible_id) continue;
+    const cur = salesByMember.get(o.responsible_id) ?? { count: 0, revenue: 0 };
+    cur.count += 1;
+    cur.revenue += Number(o.estimated_value ?? 0);
+    salesByMember.set(o.responsible_id, cur);
+  }
+  const memberList = ((membersRes.data as { id: string; full_name: string }[] | null) ?? [])
+    .filter((m) => (crm.canSeeAll ? true : m.id === crm.teamMemberId));
+  const sellerRows = memberList
+    .map((m) => ({
+      id: m.id,
+      name: m.full_name,
+      count: salesByMember.get(m.id)?.count ?? 0,
+      revenue: salesByMember.get(m.id)?.revenue ?? 0,
+      goalCount: memberGoals[m.id]?.fechamentos !== undefined ? memberGoals[m.id].fechamentos! * factor : null,
+      goalRevenue: memberGoals[m.id]?.receita_fechada !== undefined ? memberGoals[m.id].receita_fechada! * factor : null,
+    }))
+    .sort((a, b) => b.revenue - a.revenue || b.count - a.count);
+  const teamGoalCount = (targets.fechamentos ?? 3) * factor;
+  const teamGoalRevenue = (targets.receita_fechada ?? 15000) * factor;
+
   const cards: { key: string | null; label: string; value: number; unit: "count" | "money" | "percent" | "days"; note?: string }[] = [
     { key: "leads_recebidos", label: "Leads recebidos", value: leadsPeriod.count ?? 0, unit: "count" },
     { key: null, label: "Leads novos hoje", value: leadsToday.count ?? 0, unit: "count" },
@@ -187,6 +322,13 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     { key: "tempo_medio_fechar", label: "Tempo médio até fechar", value: avgDaysToClose, unit: "days" },
     { key: "tarefas_atrasadas", label: "Tarefas atrasadas", value: overdue.length, unit: "count", note: "agora" },
   ];
+  // Vendas e fechamentos primeiro; as métricas de atividade vêm depois.
+  const SALES_FIRST = ["fechamentos", "receita_fechada", "ticket_medio", "taxa_conversao", "tempo_medio_fechar"];
+  cards.sort((a, b) => {
+    const ra = a.key && SALES_FIRST.includes(a.key) ? SALES_FIRST.indexOf(a.key) : 99;
+    const rb = b.key && SALES_FIRST.includes(b.key) ? SALES_FIRST.indexOf(b.key) : 99;
+    return ra - rb;
+  });
 
   // Funil atual por etapa (aberto), por pipeline.
   const funnelCount = new Map<string, { count: number; value: number }>();
@@ -267,10 +409,27 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
             </Link>
           ))}
         </div>
-        {access.isFullAdmin && <GoalsEditor targets={targets} olympic={olympicSettings} />}
+        {access.isFullAdmin && (
+          <GoalsEditor
+            targets={targets}
+            olympic={olympicSettings}
+            members={((membersRes.data as { id: string; full_name: string }[] | null) ?? []).map((m) => ({ id: m.id, name: m.full_name }))}
+            memberGoals={memberGoals}
+          />
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <SalesPanel
+        periodLabel={PERIODS[periodo].label}
+        team={
+          crm.canSeeAll
+            ? { count: closed.length, goalCount: teamGoalCount, revenue, goalRevenue: teamGoalRevenue }
+            : null
+        }
+        sellers={sellerRows}
+      />
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => {
           const def = GOAL_METRICS.find((m) => m.key === c.key);
           const base = def ? (targets[def.key] ?? def.fallback) : null;

@@ -4,6 +4,7 @@ import { getCrmAccessContext } from "../lib";
 import { brtToday, brtWeek, daysOverdue } from "./dates";
 import { addDays } from "./off-days";
 import { ensureDailyPicks } from "./picks";
+import { brtMonthRange } from "../sales-goals";
 import { leadGaps } from "../lead-completeness";
 import { DiarioView, type DiarioData, type DiarioTask } from "./DiarioView";
 import type { TeamMemberOption } from "../types";
@@ -60,7 +61,8 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
   const { date, startIso, endIso, isBusinessDay, overdueCutoffIso } = brtToday();
   // Performance: o Supabase fica em Oregon e cada ida e volta custa — tudo que não
   // depende de outra consulta roda junto (antes eram ~10 consultas em fila).
-  const [{ data: offRows }, { data: goalRow }, { data: weeklyRow }] = await Promise.all([
+  const month = brtMonthRange(date);
+  const [{ data: offRows }, { data: goalRow }, { data: weeklyRow }, { data: salesRows }, { data: salesGoalRows }] = await Promise.all([
     supabase
       .from("crm_off_days")
       .select("off_date, reason")
@@ -70,6 +72,17 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
       .limit(80),
     supabase.from("crm_goals").select("target").eq("metric", "daily_approaches").is("owner_id", null).maybeSingle(),
     supabase.from("crm_goals").select("target").eq("metric", "weekly_new_leads").is("owner_id", null).maybeSingle(),
+    // Vendas do mês da pessoa: negócios fechados por ela e a receita deles.
+    supabase
+      .from("crm_opportunities")
+      .select("estimated_value")
+      .eq("responsible_id", personId)
+      .eq("status", "fechada")
+      .gte("closed_at", month.startIso)
+      .lt("closed_at", month.endIso)
+      .limit(1000),
+    // Metas de vendas: a pessoal, ou (sem ela) a da equipe.
+    supabase.from("crm_goals").select("metric, target, owner_id").in("metric", ["fechamentos", "receita_fechada"]).or(`owner_id.eq.${personId},owner_id.is.null`),
   ]);
   const allOff = ((offRows as { off_date: string; reason: string | null }[] | null) ?? []).map((o) => ({ date: o.off_date, reason: o.reason }));
   const offSet = new Set(allOff.map((o) => o.date));
@@ -77,6 +90,20 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
   const offToday = offDays.some((o) => o.date === date);
   const mine = `responsible_id.eq.${personId},responsible_id.is.null`;
   const approachGoal = goalRow ? Number(goalRow.target) : DEFAULT_APPROACH_GOAL;
+  const salesGoal = (metric: string) => {
+    const rows = (salesGoalRows as { metric: string; target: number; owner_id: string | null }[] | null) ?? [];
+    const personal = rows.find((g) => g.metric === metric && g.owner_id === personId);
+    const team = rows.find((g) => g.metric === metric && g.owner_id === null);
+    return personal ? { target: Number(personal.target), personal: true } : team ? { target: Number(team.target), personal: false } : null;
+  };
+  const salesList = (salesRows as { estimated_value: number | null }[] | null) ?? [];
+  const sales = {
+    monthLabel: month.label,
+    closings: salesList.length,
+    revenue: salesList.reduce((s, o) => s + Number(o.estimated_value ?? 0), 0),
+    goalClosings: salesGoal("fechamentos"),
+    goalRevenue: salesGoal("receita_fechada"),
+  };
   const weeklyBase = weeklyRow ? Number(weeklyRow.target) : approachGoal * 5;
 
   // Sem prospecção no fim de semana: não sorteia abordagens.
@@ -421,6 +448,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     supply,
     stageOptions,
     canEditGoals: access.isFullAdmin,
+    sales,
     approach: { goal: approachGoal, done: approachedRes.count ?? 0, picks },
     overdue,
     followupColumns,

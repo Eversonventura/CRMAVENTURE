@@ -3,18 +3,41 @@
 import { useState } from "react";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import { GOAL_METRICS } from "./goals";
-import { saveCrmGoals, saveOlympicGoals } from "./goal-actions";
+import { saveCrmGoals, saveMemberSalesGoals, saveOlympicGoals } from "./goal-actions";
+import type { SalesGoalMap } from "./sales-goals";
 import { OLYMPIC_DEFAULTS, olympicTargets, type OlympicSettings } from "./olympic";
 
 const UNIT_SUFFIX = { count: "", money: "R$", percent: "%", days: "dias" } as const;
 
-export function GoalsEditor({ targets, olympic }: { targets: Record<string, number>; olympic: OlympicSettings }) {
+export function GoalsEditor({
+  targets,
+  olympic,
+  members = [],
+  memberGoals = {},
+}: {
+  targets: Record<string, number>;
+  olympic: OlympicSettings;
+  members?: { id: string; name: string }[];
+  memberGoals?: SalesGoalMap;
+}) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(GOAL_METRICS.map((m) => [m.key, String(targets[m.key] ?? m.fallback)]))
   );
   const [olympicValues, setOlympicValues] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries({ ...OLYMPIC_DEFAULTS, ...olympic }).map(([k, v]) => [k, String(v)]))
+  );
+  // Metas de vendas por vendedor: campo vazio = sem meta pessoal.
+  const [personal, setPersonal] = useState<Record<string, { fechamentos: string; receita: string }>>(
+    Object.fromEntries(
+      members.map((m) => [
+        m.id,
+        {
+          fechamentos: memberGoals[m.id]?.fechamentos !== undefined ? String(memberGoals[m.id].fechamentos) : "",
+          receita: memberGoals[m.id]?.receita_fechada !== undefined ? String(memberGoals[m.id].receita_fechada) : "",
+        },
+      ])
+    )
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,8 +54,18 @@ export function GoalsEditor({ targets, olympic }: { targets: Record<string, numb
     const olympicResult = result.error
       ? result
       : await saveOlympicGoals(Object.fromEntries(Object.entries(olympicValues).map(([k, v]) => [k, Number(v) || 0])));
+    const personalResult =
+      olympicResult.error || members.length === 0
+        ? olympicResult
+        : await saveMemberSalesGoals(
+            members.map((m) => ({
+              memberId: m.id,
+              fechamentos: personal[m.id].fechamentos.trim() === "" ? null : Number(personal[m.id].fechamentos),
+              receita_fechada: personal[m.id].receita.trim() === "" ? null : Number(personal[m.id].receita),
+            }))
+          );
     setBusy(false);
-    if (olympicResult.error) setError(olympicResult.error);
+    if (personalResult.error) setError(personalResult.error);
     else setOpen(false);
   }
 
@@ -73,6 +106,41 @@ export function GoalsEditor({ targets, olympic }: { targets: Record<string, numb
                 </label>
               ))}
             </div>
+            {members.length > 0 && (
+              <div className="mt-6 border-t border-border pt-4">
+                <h3 className="font-display text-base font-medium text-ink">Metas de vendas por vendedor</h3>
+                <p className="mt-1 text-xs text-muted">
+                  Fechamentos e receita fechada por mês, para cada pessoa. Deixe em branco para não ter meta pessoal. As metas
+                  de &quot;Negócios fechados&quot; e &quot;Receita fechada&quot; acima são as da equipe.
+                </p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="grid grid-cols-[1fr_5.5rem_7.5rem] gap-2 text-xs text-muted">
+                    <span>Vendedor</span>
+                    <span>Fechamentos</span>
+                    <span>Receita (R$)</span>
+                  </div>
+                  {members.map((m) => (
+                    <div key={m.id} className="grid grid-cols-[1fr_5.5rem_7.5rem] items-center gap-2">
+                      <span className="truncate text-ink">{m.name}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={personal[m.id].fechamentos}
+                        onChange={(e) => setPersonal({ ...personal, [m.id]: { ...personal[m.id], fechamentos: e.target.value } })}
+                        className="rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={personal[m.id].receita}
+                        onChange={(e) => setPersonal({ ...personal, [m.id]: { ...personal[m.id], receita: e.target.value } })}
+                        className="rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-6 border-t border-border pt-4">
               <h3 className="font-display text-base font-medium text-ink">Metas olímpicas e RMV</h3>
               <p className="mt-1 text-xs text-muted">
