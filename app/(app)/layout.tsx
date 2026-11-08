@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
+import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import { PoweredBy } from "@/components/PoweredBy";
 
@@ -7,11 +8,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const access = await getAccessContext();
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("full_name, photo_url").eq("id", user.id).maybeSingle();
 
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader
-        userName={(user.user_metadata?.full_name as string | undefined) || user.email || ""}
+        userName={profile?.full_name || (user.user_metadata?.full_name as string | undefined) || user.email || ""}
+        userPhoto={profile?.photo_url ?? null}
         workspaces={access.workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
         activeId={access.workspaceId}
       />

@@ -5,16 +5,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { SignOutButton } from "./SignOutButton";
+import { Avatar } from "./Avatar";
 import { switchWorkspace } from "@/lib/workspace-actions";
 
 type WorkspaceOption = { id: string; name: string; role: string };
 
 export function AppHeader({
   userName,
+  userPhoto,
   workspaces,
   activeId,
 }: {
   userName: string;
+  userPhoto: string | null;
   workspaces: WorkspaceOption[];
   activeId: string | null;
 }) {
@@ -67,7 +70,16 @@ export function AppHeader({
         >
           Compartilhar conta
         </Link>
-        <span className="hidden text-sm text-muted md:inline">{userName}</span>
+        <Link
+          href="/perfil"
+          title="Meu perfil"
+          className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition ${
+            pathname.startsWith("/perfil") ? "border-brand bg-brand-soft text-brand" : "border-border text-muted hover:border-brand hover:text-ink"
+          }`}
+        >
+          <Avatar name={userName} src={userPhoto} size={28} />
+          <span className="hidden max-w-[160px] truncate md:inline">{userName}</span>
+        </Link>
         <SignOutButton />
       </div>
       {error && <p className="w-full text-sm text-brand">{error}</p>}

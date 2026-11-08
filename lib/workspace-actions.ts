@@ -115,6 +115,22 @@ export async function removeMember(memberId: string, leaving = false): Promise<R
   return {};
 }
 
+// Grava a foto do perfil (URL pública do bucket avatars, na pasta da própria
+// pessoa) ou limpa, com null. A URL é conferida para não aceitar link de fora.
+export async function setMyPhoto(url: string | null): Promise<Result> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Sessão expirada. Entre de novo." };
+  if (url !== null) {
+    const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${user.id}/`;
+    if (!url.startsWith(prefix)) return { error: "Foto inválida." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_my_photo", { p_url: url });
+  if (error) return fail(error);
+  refresh();
+  return {};
+}
+
 export async function updateMyName(name: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_my_profile", { p_full_name: name });

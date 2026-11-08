@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@/components/Avatar";
 import {
   cancelInvite,
   createWorkspace,
@@ -12,7 +13,7 @@ import {
   setMemberRole,
 } from "@/lib/workspace-actions";
 
-export type Member = { id: string; profile_id: string; full_name: string; email: string | null; crm_role: Role };
+export type Member = { id: string; profile_id: string; full_name: string; email: string | null; photo_url: string | null; crm_role: Role };
 export type Invite = { id: string; email: string; crm_role: Role };
 type Role = "administrador" | "gestor" | "vendedor";
 
@@ -118,13 +119,16 @@ export function AccountManager({
             const isMe = m.id === myMemberId;
             return (
               <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar name={m.full_name || m.email || "?"} src={m.photo_url} size={36} />
+                  <div className="min-w-0">
                   <p className="truncate font-medium text-ink">
                     {m.full_name || m.email}
                     {isMe && <span className="ml-1.5 text-xs font-normal text-muted">(você)</span>}
                     {isOwner && <span className="ml-1.5 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-normal text-brand">dono</span>}
                   </p>
                   <p className="truncate text-xs text-muted">{m.email}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {isAdmin && !isOwner ? (

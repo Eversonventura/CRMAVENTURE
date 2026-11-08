@@ -11,7 +11,7 @@ export default async function ContaPage() {
   const [{ data: members }, { data: invites }] = await Promise.all([
     supabase
       .from("team_members")
-      .select("id, profile_id, full_name, email, crm_role, created_at")
+      .select("id, profile_id, full_name, email, photo_url, crm_role, created_at")
       .eq("workspace_id", active.id)
       .order("created_at"),
     access.isFullAdmin
