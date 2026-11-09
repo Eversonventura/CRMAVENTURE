@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { OlympicTargets } from "../olympic";
-import { olympicProgress } from "../olympic";
+import { ladderPosition, olympicProgress } from "../olympic";
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -38,8 +38,7 @@ export function OlympicCard({
   periodParam: string;
 }) {
   const progress = olympicProgress(newMoney, targets);
-  const scaleMax = Math.max(targets.rmv, newMoney) * 1.02;
-  const pct = (v: number) => `${Math.min(100, (v / scaleMax) * 100)}%`;
+  const pct = (v: number) => `${ladderPosition(v, targets)}%`;
   const reached = TIERS.filter((t) => progress.tier !== "none" && TIERS.findIndex((x) => x.key === progress.tier) >= TIERS.findIndex((x) => x.key === t.key));
   const top = reached.at(-1);
   const nextTier = progress.next ? TIERS.find((t) => t.key === progress.next!.key) : null;
@@ -83,23 +82,39 @@ export function OlympicCard({
       </div>
 
       {/* Barra com os marcos */}
-      <div className="relative mt-8 mb-10 h-3 rounded-full bg-surface2">
+      <div className="relative mt-8 mb-8 h-3 rounded-full bg-surface2 sm:mb-10">
         <div className="h-full rounded-full bg-brand/80" style={{ width: pct(newMoney) }} />
         {TIERS.map((t) => {
           const value = targets[t.key === "rmv" ? "rmv" : t.key];
           const hit = newMoney >= value;
           return (
-            <div key={t.key} className="absolute top-0 -translate-x-1/2" style={{ left: pct(value) }}>
-              <div className="h-3 w-0.5" style={{ backgroundColor: t.color }} />
-              <div className="mt-1 text-center" style={{ minWidth: 64 }}>
-                <p className={`text-[11px] font-medium ${hit ? "text-ink" : "text-muted"}`}>
-                  {t.emoji} {t.label}
+            <div
+              key={t.key}
+              className={`absolute top-0 ${t.key === "rmv" ? "-translate-x-full" : "-translate-x-1/2"}`}
+              style={{ left: pct(value) }}
+            >
+              <div className={`h-3 w-0.5 ${t.key === "rmv" ? "ml-auto" : "mx-auto"}`} style={{ backgroundColor: t.color }} />
+              <div className={`mt-1 ${t.key === "rmv" ? "text-right" : "text-center"}`} style={{ minWidth: 64 }}>
+                <p className={`whitespace-nowrap text-[11px] font-medium ${hit ? "text-ink" : "text-muted"}`}>
+                  <span className="sm:hidden">{t.emoji}</span>
+                  <span className="hidden sm:inline">
+                    {t.emoji} {t.label}
+                  </span>
                 </p>
-                <p className="text-[10px] text-muted">{money(value)}</p>
+                <p className="hidden whitespace-nowrap text-[10px] text-muted sm:block">{money(value)}</p>
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Celular: a barra é estreita, então os valores dos marcos vão numa legenda. */}
+      <div className="-mt-3 mb-4 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted sm:hidden">
+        {TIERS.map((t) => (
+          <p key={t.key}>
+            {t.emoji} {t.label}: <span className="text-ink">{money(targets[t.key])}</span>
+          </p>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">

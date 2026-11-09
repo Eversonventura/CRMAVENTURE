@@ -8,3 +8,4 @@
 | Logo avantecrm (login, cadastro, cabeçalho) e rodapé "Powered by Aventure" em todas as telas | 3 |
 | Metas de vendas: meta de fechamentos e receita por vendedor (editor de Metas), painel "Vendas e fechamentos" na Visão geral, card "Vendas no mês" no Diário, cartões de venda primeiro | 4 |
 | Perfil: página "Meu perfil" (foto, nome, e-mail de acesso, troca de senha, minhas contas/empresas), avatar no cabeçalho, no Funil e na lista de pessoas da conta; migration 001_perfil_foto | 5 |
+| Meta olímpica: marcos Bronze/Prata/Ouro/RMV em escada (sem sobreposição) e legenda de valores no celular | 6 |

@@ -59,3 +59,21 @@ export function olympicProgress(value: number, t: OlympicTargets) {
   const next = order.find((o) => value < o.target) ?? null;
   return { tier, next: next ? { key: next.key, remaining: next.target - value } : null };
 }
+
+// Posição (0–100) de um valor na barra "escada": os quatro marcos (Bronze,
+// Prata, Ouro, RMV) ficam a distâncias iguais, e o valor anda linearmente
+// dentro de cada degrau. Em escala proporcional, os três primeiros marcos
+// (que ficam perto uns dos outros) viravam rótulos sobrepostos.
+export function ladderPosition(value: number, t: OlympicTargets): number {
+  const steps = [0, t.bronze, t.silver, t.gold, t.rmv];
+  const size = 100 / (steps.length - 1);
+  if (!(value > 0)) return 0;
+  for (let i = 1; i < steps.length; i++) {
+    if (value <= steps[i]) {
+      const span = steps[i] - steps[i - 1];
+      const frac = span > 0 ? (value - steps[i - 1]) / span : 1;
+      return (i - 1 + Math.min(1, Math.max(0, frac))) * size;
+    }
+  }
+  return 100;
+}
