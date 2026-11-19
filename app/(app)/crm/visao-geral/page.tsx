@@ -7,7 +7,9 @@ import { classifyGoal, GOAL_METRICS, GOAL_TONE_CLASSES } from "../goals";
 import { GoalsEditor } from "../GoalsEditor";
 import type { SalesGoalMap } from "../sales-goals";
 import { OlympicCard } from "./OlympicCard";
-import { olympicTargets, readOlympicSettings } from "../olympic";
+import { activeOlympicTargets, olympicMode, readOlympicSettings } from "../olympic";
+import { isContract, monthlySales, type ReceivableSale } from "../olympic-sales";
+import { BarBlock, PieBlock, type ChartDatum } from "./CrmCharts";
 
 // Visão geral + Relatórios numa página só, com período e metas coloridas.
 // Tudo é consultado por período / agregado (nada de varrer tabela inteira).
@@ -192,7 +194,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     goalsRes, stagesRes, pipelinesRes, membersRes,
     leadsPeriod, leadsToday, openRes, closedRes, lostRes,
     meetingsDone, meetingsScheduled, overdueRes, historyRes, todayTasksRes,
-    recRes,
+    recRes, closedOppsRes,
   ] = await Promise.all([
     supabase.from("crm_goals").select("metric, target, owner_id"),
     supabase.from("crm_stages").select("id, name, position, pipeline_id, role, kind").order("position"),
@@ -219,8 +221,16 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       .eq("status", "pendente").gte("due_at", today.startIso).lt("due_at", today.endIso).order("due_at").limit(50),
     supabase
       .from("receivables")
-      .select("kind, client_id, sale_id, amount, status, paid_at, due_date, installment_number, sale_total, created_at")
+      .select("kind, client_id, sale_id, opportunity_id, description, amount, status, paid_at, due_date, installment_number, sale_total, created_at, clients(company_name)")
       .limit(2000),
+    // Negócios fechados no mês da meta olímpica (ela conta VENDAS, não pagamentos).
+    supabase
+      .from("crm_opportunities")
+      .select("id, estimated_value, closed_at, crm_companies(name)")
+      .eq("status", "fechada")
+      .gte("closed_at", new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1, 3)).toISOString())
+      .lt("closed_at", new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 1, 3)).toISOString())
+      .limit(500),
   ]);
 
   const targets: Record<string, number> = {};
@@ -233,27 +243,59 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     }
   }
 
-  // --- Meta olímpica: dinheiro NOVO recebido no mês (regime de caixa) ---
+  // --- Meta olímpica: VENDAS fechadas no mês (valor ou nº de contratos) ---
   const { data: recRows } = recRes;
+  const { data: closedOppRows } = closedOppsRes;
   const inMonth = (d: string | null | undefined) => !!d && d.slice(0, 7) === month;
-  const receivables = (recRows as { kind: string; client_id: string | null; sale_id: string; due_date: string; amount: number; status: string; paid_at: string | null; installment_number: number; sale_total: number; created_at: string }[] | null) ?? [];
-  const projetos = receivables.filter((r) => r.kind === "projeto" && r.status === "paid" && inMonth(r.paid_at)).reduce((x, r) => x + Number(r.amount), 0);
-  const comissoes = receivables.filter((r) => r.kind === "comissao" && r.status === "paid" && inMonth(r.paid_at)).reduce((x, r) => x + Number(r.amount), 0);
-  // 1ª mensalidade conta pelas parcelas recebidas.
-  const primeirasParcelas = receivables.filter((r) => r.kind === "primeira_mensalidade" && r.status === "paid" && inMonth(r.paid_at)).reduce((x, r) => x + Number(r.amount), 0);
-  // "Vendido no mês" = vendas cuja 1ª parcela vence no mês (a data da venda, não a do
-  // cadastro no sistema — uma venda de setembro lançada em outubro continua sendo de setembro).
-  const saleDates = new Map<string, { total: number; first: string }>();
-  for (const r of receivables) {
-    const cur = saleDates.get(r.sale_id);
-    saleDates.set(r.sale_id, { total: Number(r.sale_total), first: cur && cur.first < r.due_date ? cur.first : r.due_date });
-  }
-  const sold = Array.from(saleDates.values()).filter((v) => v.first.slice(0, 7) === month).reduce((x, v) => x + v.total, 0);
+  type RecRow = { opportunity_id: string | null; description: string; clients: { company_name: string } | { company_name: string }[] | null; kind: string; client_id: string | null; sale_id: string; due_date: string; amount: number; status: string; paid_at: string | null; installment_number: number; sale_total: number; created_at: string };
+  const receivables = (recRows as unknown as RecRow[] | null) ?? [];
+  const oneRel = <T,>(r: T | T[] | null | undefined): T | null => (Array.isArray(r) ? (r[0] ?? null) : (r ?? null));
 
-  const primeirasMensalidades = primeirasParcelas;
-  const newMoney = projetos + comissoes + primeirasMensalidades;
+  // Recebido no mês (caixa): só informativo.
+  const cashReceived = receivables
+    .filter((r) => r.status === "paid" && inMonth(r.paid_at))
+    .reduce((x, r) => x + Number(r.amount), 0);
+
+  const saleGroups = new Map<string, ReceivableSale>();
+  for (const r of receivables) {
+    const cur = saleGroups.get(r.sale_id);
+    saleGroups.set(r.sale_id, {
+      saleId: r.sale_id,
+      kind: r.kind,
+      opportunityId: r.opportunity_id,
+      clientName: oneRel(r.clients)?.company_name ?? null,
+      description: r.description,
+      saleTotal: Number(r.sale_total),
+      firstDue: cur && cur.firstDue < r.due_date ? cur.firstDue : r.due_date,
+    });
+  }
+  const monthSales = monthlySales({
+    month,
+    closedOpps: ((closedOppRows as unknown as { id: string; estimated_value: number | null; closed_at: string; crm_companies: { name: string } | { name: string }[] | null }[] | null) ?? []).map((o) => ({
+      id: o.id,
+      company: oneRel(o.crm_companies)?.name ?? "Cliente",
+      value: o.estimated_value === null ? null : Number(o.estimated_value),
+      closedAt: o.closed_at,
+    })),
+    receivableSales: Array.from(saleGroups.values()),
+  });
+  const sumBy = (pred: (e: (typeof monthSales)[number]) => boolean) => monthSales.filter(pred).reduce((x, e) => x + e.value, 0);
+  const countBy = (pred: (e: (typeof monthSales)[number]) => boolean) => monthSales.filter(pred).length;
   const olympicSettings = readOlympicSettings(targets);
-  const olympic = olympicTargets(olympicSettings);
+  const mode = olympicMode(olympicSettings);
+  const olympic = activeOlympicTargets(olympicSettings);
+  const olympicValue = mode === "contratos" ? countBy(isContract) : sumBy(() => true);
+  const olympicBreakdown =
+    mode === "contratos"
+      ? [
+          { label: "Fechamentos no CRM", value: countBy((e) => e.source === "crm") },
+          { label: "Vendas avulsas", value: countBy((e) => e.source === "servico") },
+        ]
+      : [
+          { label: "Fechamentos no CRM", value: sumBy((e) => e.source === "crm") },
+          { label: "Vendas avulsas", value: sumBy((e) => e.source === "servico") },
+          { label: "Comissões de fornecedores", value: sumBy((e) => e.source === "comissao") },
+        ];
   const [oy, om] = month.split("-").map(Number);
   const monthLabel = new Date(Date.UTC(oy, om - 1, 1, 12)).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -389,14 +431,12 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         month={month}
         monthLabel={monthLabel}
         isCurrentMonth={month === currentMonthKey}
+        mode={mode}
         targets={olympic}
-        newMoney={newMoney}
-        breakdown={[
-          { label: "Projetos (parcelas recebidas)", value: projetos },
-          { label: "Comissões de fornecedores", value: comissoes },
-          { label: "1ª mensalidade de cliente novo", value: primeirasMensalidades },
-        ]}
-        sold={sold}
+        progressValue={olympicValue}
+        breakdown={olympicBreakdown}
+        sales={monthSales}
+        received={cashReceived}
         periodParam={periodo}
       />
       )}
@@ -456,31 +496,43 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Block title="Funil por etapa (aberto agora)">
-          {pipelines.map((p) => (
-            <div key={p.id} className="space-y-2">
-              {pipelines.length > 1 && <p className="pt-1 text-xs font-medium uppercase tracking-wide text-muted">{p.name}</p>}
-              {stages.filter((s) => s.pipeline_id === p.id).map((s) => {
-                const f = funnelCount.get(s.id);
-                return <Row key={s.id} label={s.name} value={`${f?.count ?? 0} · ${money(f?.value ?? 0)}`} />;
-              })}
-            </div>
-          ))}
-        </Block>
+        <BarBlock
+          title="Funil por etapa (aberto agora)"
+          hint="Quantidade de oportunidades abertas em cada etapa (o valor aparece ao passar o mouse)."
+          empty="Nenhuma oportunidade aberta."
+          data={pipelines.flatMap((p) =>
+            stages
+              .filter((st) => st.pipeline_id === p.id)
+              .map((st): ChartDatum => {
+                const f = funnelCount.get(st.id);
+                return {
+                  name: pipelines.length > 1 ? `${p.name} · ${st.name}` : st.name,
+                  value: f?.count ?? 0,
+                  extra: money(f?.value ?? 0),
+                };
+              })
+          )}
+        />
 
-        <Block title="Conversão etapa a etapa" hint="Oportunidades que entraram em cada etapa no período.">
-          {stages.filter((s) => s.kind === "open").map((s) => (
-            <Row key={s.id} label={s.name} value={passed.get(s.id)?.size ?? 0} />
-          ))}
-        </Block>
+        <BarBlock
+          title="Conversão etapa a etapa"
+          hint="Oportunidades que entraram em cada etapa no período."
+          empty="Sem etapas."
+          data={stages.filter((st) => st.kind === "open").map((st): ChartDatum => ({ name: st.name, value: passed.get(st.id)?.size ?? 0 }))}
+        />
 
-        <Block title="Tempo médio em cada etapa" hint="Dos movimentos do período.">
-          {stages.filter((s) => s.kind === "open").map((s) => {
-            const d = durations.get(s.id) ?? [];
-            const avg = d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0;
-            return <Row key={s.id} label={s.name} value={`${avg.toFixed(1)}d`} />;
-          })}
-        </Block>
+        <BarBlock
+          title="Tempo médio em cada etapa"
+          hint="Em dias, dos movimentos do período."
+          empty="Sem etapas."
+          unit="d"
+          data={stages
+            .filter((st) => st.kind === "open")
+            .map((st): ChartDatum => {
+              const d = durations.get(st.id) ?? [];
+              return { name: st.name, value: Number((d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0).toFixed(1)) };
+            })}
+        />
 
         <Block title="Agenda do dia">
           {agenda.length === 0 ? (
@@ -492,21 +544,30 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
           )}
         </Block>
 
-        <Block title="Vendas por canal de aquisição">
-          {byChannel.length === 0 ? <p className="text-sm text-muted">Nenhuma venda fechada no período.</p> : byChannel.map(([n, c]) => <Row key={n} label={n} value={c} />)}
-        </Block>
+        <PieBlock
+          title="Vendas por canal de aquisição"
+          empty="Nenhuma venda fechada no período."
+          data={byChannel.map(([name, value]) => ({ name, value }))}
+        />
 
-        <Block title="Ranking de vendedores">
-          {bySeller.length === 0 ? <p className="text-sm text-muted">Nenhuma venda fechada no período.</p> : bySeller.map(([n, c]) => <Row key={n} label={n} value={c} />)}
-        </Block>
+        <BarBlock
+          title="Ranking de vendedores"
+          hint="Vendas fechadas no período."
+          empty="Nenhuma venda fechada no período."
+          data={bySeller.map(([name, value]) => ({ name, value }))}
+        />
 
-        <Block title="Motivos de perda mais frequentes">
-          {lossReasons.length === 0 ? <p className="text-sm text-muted">Nenhuma oportunidade perdida no período.</p> : lossReasons.map(([n, c]) => <Row key={n} label={n} value={c} />)}
-        </Block>
+        <PieBlock
+          title="Motivos de perda mais frequentes"
+          empty="Nenhuma oportunidade perdida no período."
+          data={lossReasons.map(([name, value]) => ({ name, value }))}
+        />
 
-        <Block title="Tarefas atrasadas por vendedor">
-          {overdueByRep.length === 0 ? <p className="text-sm text-muted">Nenhuma tarefa atrasada.</p> : overdueByRep.map(([n, c]) => <Row key={n} label={n} value={c} />)}
-        </Block>
+        <BarBlock
+          title="Tarefas atrasadas por vendedor"
+          empty="Nenhuma tarefa atrasada."
+          data={overdueByRep.map(([name, value]) => ({ name, value }))}
+        />
 
       </div>
     </div>

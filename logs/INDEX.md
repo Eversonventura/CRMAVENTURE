@@ -10,3 +10,4 @@
 | Perfil: página "Meu perfil" (foto, nome, e-mail de acesso, troca de senha, minhas contas/empresas), avatar no cabeçalho, no Funil e na lista de pessoas da conta; migration 001_perfil_foto | 5 |
 | Meta olímpica: marcos Bronze/Prata/Ouro/RMV em escada (sem sobreposição) e legenda de valores no celular | 6 |
 | Hub → avantecrm, lote 1: Excluir lead, Diário prioriza lead com telefone, contato cadastrado/importado entra em Novo lead, etapas do funil com títulos mais claros | 7 |
+| Meta olímpica por vendas fechadas (regra do Hub) com escolha de medir por valor ou por contratos fechados; gráficos na Visão geral | 8 |

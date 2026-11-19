@@ -11,6 +11,12 @@ export const OLYMPIC_KEYS = [
   "olympic_gold",
   "rmv_multiplier",
   "rmv_manual",
+  // Modo da meta: 0 = valor vendido (R$), 1 = contratos fechados (quantidade).
+  "olympic_mode",
+  "olympic_count_bronze",
+  "olympic_count_silver",
+  "olympic_count_gold",
+  "olympic_count_rmv",
 ] as const;
 export type OlympicKey = (typeof OLYMPIC_KEYS)[number];
 export type OlympicSettings = Record<OlympicKey, number>;
@@ -23,7 +29,17 @@ export const OLYMPIC_DEFAULTS: OlympicSettings = {
   olympic_gold: 35,
   rmv_multiplier: 2,
   rmv_manual: 0, // 0 = usa a fórmula
+  olympic_mode: 0,
+  olympic_count_bronze: 3,
+  olympic_count_silver: 4,
+  olympic_count_gold: 5,
+  olympic_count_rmv: 10,
 };
+
+// A meta olímpica pode ser medida pelo VALOR vendido no mês (R$) ou pela
+// QUANTIDADE de contratos fechados.
+export type OlympicMode = "valor" | "contratos";
+export const olympicMode = (s: OlympicSettings): OlympicMode => (s.olympic_mode === 1 ? "contratos" : "valor");
 
 export function readOlympicSettings(goals: Record<string, number>): OlympicSettings {
   const out = { ...OLYMPIC_DEFAULTS };
@@ -43,6 +59,16 @@ export function olympicTargets(s: OlympicSettings): OlympicTargets {
     gold,
     rmv: s.rmv_manual > 0 ? s.rmv_manual : gold * s.rmv_multiplier,
   };
+}
+
+// Metas em quantidade de contratos (mesmo formato dos alvos em R$).
+export function olympicCountTargets(s: OlympicSettings): OlympicTargets {
+  return { base: 0, bronze: s.olympic_count_bronze, silver: s.olympic_count_silver, gold: s.olympic_count_gold, rmv: s.olympic_count_rmv };
+}
+
+// Os alvos que valem agora, conforme o modo escolhido.
+export function activeOlympicTargets(s: OlympicSettings): OlympicTargets {
+  return olympicMode(s) === "contratos" ? olympicCountTargets(s) : olympicTargets(s);
 }
 
 export type OlympicTier = "none" | "bronze" | "silver" | "gold" | "rmv";

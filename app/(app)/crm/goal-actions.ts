@@ -37,6 +37,16 @@ export async function saveOlympicGoals(values: Record<string, number>): Promise<
   const access = await getAccessContext();
   if (!access.isFullAdmin) return { error: "Só administradores podem alterar as metas." };
 
+  // Modo por contratos: quantidades inteiras e em ordem crescente.
+  if (values.olympic_mode !== undefined && values.olympic_mode !== 0 && values.olympic_mode !== 1) return { error: "Modo da meta inválido." };
+  if (values.olympic_mode === 1) {
+    const counts = [values.olympic_count_bronze, values.olympic_count_silver, values.olympic_count_gold, values.olympic_count_rmv];
+    if (counts.some((c) => c === undefined || !Number.isInteger(c) || c < 0)) return { error: "As metas por contratos precisam ser números inteiros (0 ou mais)." };
+    if (!(counts[0] <= counts[1] && counts[1] <= counts[2] && counts[2] <= counts[3])) {
+      return { error: "Na meta por contratos, Bronze ≤ Prata ≤ Ouro ≤ RMV." };
+    }
+  }
+
   const supabase = await createClient();
   for (const key of OLYMPIC_KEYS) {
     const value = values[key];

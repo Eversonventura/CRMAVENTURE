@@ -144,40 +144,99 @@ export function GoalsEditor({
             <div className="mt-6 border-t border-border pt-4">
               <h3 className="font-display text-base font-medium text-ink">Metas olímpicas e RMV</h3>
               <p className="mt-1 text-xs text-muted">
-                Base corrigida = ponto de partida × (1 + inflação). Bronze/Prata/Ouro = base × (1 + crescimento). RMV = multiplicador × Ouro
-                (ou um valor fixo). Contam só dinheiro novo recebido no mês.
+                A meta olímpica conta as <strong>vendas fechadas no mês</strong>. Escolha como medir:
               </p>
-              <div className="mt-3 space-y-2.5 text-sm">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                 {(
                   [
-                    ["olympic_base", "Ponto de partida mensal", "R$"],
-                    ["olympic_inflation", "Inflação projetada", "%"],
-                    ["olympic_bronze", "Bronze — crescimento", "%"],
-                    ["olympic_silver", "Prata — crescimento", "%"],
-                    ["olympic_gold", "Ouro — crescimento", "%"],
-                    ["rmv_multiplier", "RMV = Ouro ×", "×"],
-                    ["rmv_manual", "RMV fixo (0 = usar a fórmula)", "R$"],
+                    ["0", "Por valor vendido", "soma, em R$, das vendas fechadas"],
+                    ["1", "Por contratos fechados", "quantidade de contratos fechados"],
                   ] as const
-                ).map(([key, label, suffix]) => (
-                  <label key={key} className="flex items-center justify-between gap-3">
-                    <span className="text-ink">{label}</span>
-                    <span className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min={0}
-                        step="any"
-                        value={olympicValues[key]}
-                        onChange={(e) => setOlympicValues({ ...olympicValues, [key]: e.target.value })}
-                        className="w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
-                      />
-                      <span className="w-6 text-xs text-muted">{suffix}</span>
-                    </span>
-                  </label>
+                ).map(([val, label, hint]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setOlympicValues({ ...olympicValues, olympic_mode: val })}
+                    className={`rounded-lg border px-3 py-2 text-left transition ${
+                      olympicValues.olympic_mode === val ? "border-brand bg-brand-soft text-brand" : "border-border text-ink hover:border-brand"
+                    }`}
+                  >
+                    <span className="block font-medium">{label}</span>
+                    <span className="text-xs text-muted">{hint}</span>
+                  </button>
                 ))}
               </div>
-              <p className="mt-3 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
-                Resulta em: Bronze {money(preview.bronze)} · Prata {money(preview.silver)} · Ouro {money(preview.gold)} · RMV {money(preview.rmv)}
-              </p>
+
+              {olympicValues.olympic_mode === "1" ? (
+                <>
+                  <p className="mt-3 text-xs text-muted">
+                    Quantos contratos fechados no mês para cada medalha (fechamentos do funil e vendas avulsas; comissão não conta como contrato).
+                  </p>
+                  <div className="mt-3 space-y-2.5 text-sm">
+                    {(
+                      [
+                        ["olympic_count_bronze", "Bronze"],
+                        ["olympic_count_silver", "Prata"],
+                        ["olympic_count_gold", "Ouro"],
+                        ["olympic_count_rmv", "RMV"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label key={key} className="flex items-center justify-between gap-3">
+                        <span className="text-ink">{label}</span>
+                        <span className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={olympicValues[key]}
+                            onChange={(e) => setOlympicValues({ ...olympicValues, [key]: e.target.value })}
+                            className="w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                          />
+                          <span className="w-16 text-xs text-muted">contratos</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-xs text-muted">
+                    Base corrigida = ponto de partida × (1 + inflação). Bronze/Prata/Ouro = base × (1 + crescimento). RMV = multiplicador × Ouro
+                    (ou um valor fixo).
+                  </p>
+                  <div className="mt-3 space-y-2.5 text-sm">
+                    {(
+                      [
+                        ["olympic_base", "Ponto de partida mensal", "R$"],
+                        ["olympic_inflation", "Inflação projetada", "%"],
+                        ["olympic_bronze", "Bronze — crescimento", "%"],
+                        ["olympic_silver", "Prata — crescimento", "%"],
+                        ["olympic_gold", "Ouro — crescimento", "%"],
+                        ["rmv_multiplier", "RMV = Ouro ×", "×"],
+                        ["rmv_manual", "RMV fixo (0 = usar a fórmula)", "R$"],
+                      ] as const
+                    ).map(([key, label, suffix]) => (
+                      <label key={key} className="flex items-center justify-between gap-3">
+                        <span className="text-ink">{label}</span>
+                        <span className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={olympicValues[key]}
+                            onChange={(e) => setOlympicValues({ ...olympicValues, [key]: e.target.value })}
+                            className="w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                          />
+                          <span className="w-6 text-xs text-muted">{suffix}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-3 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
+                    Resulta em: Bronze {money(preview.bronze)} · Prata {money(preview.silver)} · Ouro {money(preview.gold)} · RMV {money(preview.rmv)}
+                  </p>
+                </>
+              )}
             </div>
 
             {error && <p className="mt-3 text-sm text-brand">{error}</p>}
