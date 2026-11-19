@@ -8,7 +8,15 @@ import { brtDateOf } from "./diario/off-days";
 export type SaleSource = "crm" | "servico" | "comissao";
 export type SaleEntry = { key: string; source: SaleSource; label: string; client: string; value: number; date: string };
 
-export type ClosedOpp = { id: string; company: string; value: number | null; closedAt: string };
+export type ClosedOpp = {
+  id: string;
+  company: string;
+  value: number | null;
+  // Mensalidade definida no fechamento (recorrência), guardada no cadastro do cliente.
+  monthlyValue?: number | null;
+  isRecurring?: boolean;
+  closedAt: string;
+};
 export type ReceivableSale = {
   saleId: string;
   kind: string; // projeto | comissao | primeira_mensalidade
@@ -31,12 +39,14 @@ export function monthlySales(args: {
     if (s.opportunityId && s.kind === "projeto") planByOpp.set(s.opportunityId, s);
   }
 
-  // 1) Negócios fechados no CRM: valor do fechamento — o do plano de projeto,
-  //    se foi definido, senão o valor da oportunidade.
+  // 1) Negócios fechados no CRM: valor da VENDA — o do plano de projeto, se foi
+  //    definido; em recorrência, a mensalidade definida no fechamento (desconto na
+  //    1ª mensalidade é caixa, não muda a venda); senão o valor estimado.
   for (const o of args.closedOpps) {
     const date = brtDateOf(o.closedAt);
     if (date.slice(0, 7) !== month) continue;
-    const value = planByOpp.get(o.id)?.saleTotal ?? o.value ?? 0;
+    const monthly = o.monthlyValue && o.monthlyValue > 0 ? o.monthlyValue : null;
+    const value = planByOpp.get(o.id)?.saleTotal ?? (o.isRecurring ? monthly : null) ?? o.value ?? monthly ?? 0;
     if (value <= 0) continue;
     entries.push({ key: `opp-${o.id}`, source: "crm", label: "Fechamento no CRM", client: o.company, value, date });
   }

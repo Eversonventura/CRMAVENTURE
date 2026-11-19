@@ -12,7 +12,7 @@ elas são **trazidas por sprint**, com revisão. Este arquivo é o registro.
 Tudo do CRM do Hub até o commit abaixo já foi avaliado (trazido ou descartado,
 conforme a tabela). Atualize esta linha ao terminar cada sincronização.
 
-ULTIMO_COMMIT_SINCRONIZADO=24ae357
+ULTIMO_COMMIT_SINCRONIZADO=6b6c598
 
 ## Como sincronizar (quando o usuário pedir "sincroniza com o Hub")
 
@@ -45,6 +45,13 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 | `crm_opportunities` (`workspace_id`, `status`, `closed_at`, `estimated_value`) | o Hub soma as vendas fechadas por mês (Mapa de Metas e cartão de vendas reais) |
 | Auth: criação de usuário com e-mail confirmado e bloqueio (`ban_duration`) | suspensão e reativação de acesso pelo Hub |
 
+## Arquivos que divergem do Hub de propósito (mesclar à mão ao sincronizar)
+
+- `visao-geral/OlympicCard.tsx` e `olympic.ts`: modo da meta olímpica por **valor ou contratos** (só existe aqui); `OlympicBanner` recebe `scope` (conta) para guardar a comemoração por conta.
+- `visao-geral/page.tsx`: painel "Vendas e fechamentos" por vendedor, metas por vendedor, sem anúncios/WhatsApp/serviços pontuais.
+- `olympic-sales.ts`: sem a origem `pontual`.
+- `actions.ts`: excluir lead protege a empresa de vendedor; anexos por conta; e-mail via Resend.
+
 ## Estado de cada commit do CRM do Hub (desde `8b139b8`)
 
 | Commit | Assunto | Estado |
@@ -61,3 +68,8 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 | `6a0f1d0` | Visão geral com gráficos (pizza e barras) | Trazido — Sprint 8 |
 | `768bd0f` | Etapas do funil com títulos e nomes de papel mais claros | Trazido — Sprint 7 |
 | `24ae357` | Funil: fechados e perdidos visíveis por 3 meses; arrastar de volta reabre | Trazido — Sprint 10 |
+| `893e63f` | Funil: card perdido fica na coluna Perdido na hora | Trazido — Sprint 11 |
+| `7ef5ead` | Meta olímpica conta a venda (recorrência usa a mensalidade do fechamento); desconto na 1ª mensalidade | Trazido — Sprint 11 (sem serviços pontuais) |
+| `d987e11`, `61313b1`, `ce3ead2`, `ee0f6ea` | Meta olímpica: banner do marco, confete, destaque em cada marco, caixas clicáveis (OlympicBanner/Celebration/TierButton) | Trazido — Sprint 11 (estado final; a "escada" da Sprint 6 foi removida a favor da barra só com traços do Hub) |
+| `f3db887` | Visão geral: remove o cartão "Recebido no mês (caixa)" | Trazido — Sprint 11 (o caixa continua em Recebimentos) |
+| `6b6c598` | Visão geral: destaque nos cartões de metas (batida / quase lá / abaixo) | Trazido — Sprint 11 |

@@ -226,7 +226,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     // Negócios fechados no mês da meta olímpica (ela conta VENDAS, não pagamentos).
     supabase
       .from("crm_opportunities")
-      .select("id, estimated_value, closed_at, crm_companies(name)")
+      .select("id, estimated_value, closed_at, won_client_id, deal_type, crm_companies(name)")
       .eq("status", "fechada")
       .gte("closed_at", new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1, 3)).toISOString())
       .lt("closed_at", new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 1, 3)).toISOString())
@@ -246,15 +246,9 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   // --- Meta olímpica: VENDAS fechadas no mês (valor ou nº de contratos) ---
   const { data: recRows } = recRes;
   const { data: closedOppRows } = closedOppsRes;
-  const inMonth = (d: string | null | undefined) => !!d && d.slice(0, 7) === month;
   type RecRow = { opportunity_id: string | null; description: string; clients: { company_name: string } | { company_name: string }[] | null; kind: string; client_id: string | null; sale_id: string; due_date: string; amount: number; status: string; paid_at: string | null; installment_number: number; sale_total: number; created_at: string };
   const receivables = (recRows as unknown as RecRow[] | null) ?? [];
   const oneRel = <T,>(r: T | T[] | null | undefined): T | null => (Array.isArray(r) ? (r[0] ?? null) : (r ?? null));
-
-  // Recebido no mês (caixa): só informativo.
-  const cashReceived = receivables
-    .filter((r) => r.status === "paid" && inMonth(r.paid_at))
-    .reduce((x, r) => x + Number(r.amount), 0);
 
   const saleGroups = new Map<string, ReceivableSale>();
   for (const r of receivables) {
@@ -269,12 +263,26 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       firstDue: cur && cur.firstDue < r.due_date ? cur.firstDue : r.due_date,
     });
   }
+  // Venda recorrente: o valor da venda é a mensalidade definida no fechamento
+  // (guardada no cliente), mesmo que a oportunidade não tenha valor estimado.
+  type ClosedRow = { id: string; estimated_value: number | null; closed_at: string; won_client_id: string | null; deal_type: string | null; crm_companies: { name: string } | { name: string }[] | null };
+  const closedOppList = (closedOppRows as unknown as ClosedRow[] | null) ?? [];
+  const wonClientIds = Array.from(new Set(closedOppList.map((o) => o.won_client_id).filter((x): x is string => !!x)));
+  const monthlyByClient = new Map<string, number>();
+  if (wonClientIds.length > 0) {
+    const { data: wonClients } = await supabase.from("clients").select("id, monthly_value").in("id", wonClientIds);
+    for (const c of (wonClients as { id: string; monthly_value: number | null }[] | null) ?? []) {
+      if (c.monthly_value && Number(c.monthly_value) > 0) monthlyByClient.set(c.id, Number(c.monthly_value));
+    }
+  }
   const monthSales = monthlySales({
     month,
-    closedOpps: ((closedOppRows as unknown as { id: string; estimated_value: number | null; closed_at: string; crm_companies: { name: string } | { name: string }[] | null }[] | null) ?? []).map((o) => ({
+    closedOpps: closedOppList.map((o) => ({
       id: o.id,
       company: oneRel(o.crm_companies)?.name ?? "Cliente",
       value: o.estimated_value === null ? null : Number(o.estimated_value),
+      monthlyValue: o.won_client_id ? (monthlyByClient.get(o.won_client_id) ?? null) : null,
+      isRecurring: o.deal_type === "recorrencia",
       closedAt: o.closed_at,
     })),
     receivableSales: Array.from(saleGroups.values()),
@@ -428,6 +436,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     <div>
       {access.isFullAdmin && (
       <OlympicCard
+        scope={access.workspaceId ?? ""}
         month={month}
         monthLabel={monthLabel}
         isCurrentMonth={month === currentMonthKey}
@@ -436,7 +445,6 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         progressValue={olympicValue}
         breakdown={olympicBreakdown}
         sales={monthSales}
-        received={cashReceived}
         periodParam={periodo}
       />
       )}
@@ -469,26 +477,64 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         sellers={sellerRows}
       />
 
+      <style>{`
+        @keyframes goal-shine { 0% { transform: translateX(-130%) } 100% { transform: translateX(260%) } }
+        @keyframes goal-pop { 0% { transform: scale(.96) } 60% { transform: scale(1.03) } 100% { transform: scale(1) } }
+        @media (prefers-reduced-motion: reduce) { .goal-card * , .goal-card { animation: none !important } }
+      `}</style>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => {
           const def = GOAL_METRICS.find((m) => m.key === c.key);
           const base = def ? (targets[def.key] ?? def.fallback) : null;
           const target = def && base !== null ? (def.scales ? base * factor : base) : null;
-          const tone = def && target !== null ? GOAL_TONE_CLASSES[classifyGoal(c.value, target, def.direction)] : null;
+          const hasGoal = !!def && target !== null && target > 0;
+          const toneKey = def && target !== null ? classifyGoal(c.value, target, def.direction) : null;
+          const tone = toneKey ? GOAL_TONE_CLASSES[toneKey] : null;
+          const hit = hasGoal && toneKey === "green";
+          const box = !hasGoal
+            ? "border-border bg-surface"
+            : toneKey === "green"
+              ? "border-emerald-500 bg-emerald-50 shadow-[0_6px_20px_rgba(16,185,129,0.25)]"
+              : toneKey === "yellow"
+                ? "border-amber-300 bg-amber-50/60"
+                : "border-red-300 bg-red-50/60";
+          const badge = !hasGoal
+            ? null
+            : toneKey === "green"
+              ? { text: "✓ Meta batida", cls: "bg-emerald-600 text-white" }
+              : toneKey === "yellow"
+                ? { text: "Quase lá", cls: "bg-amber-200 text-amber-900" }
+                : { text: def!.direction === "lower" ? "Acima do limite" : "Abaixo da meta", cls: "bg-red-100 text-red-800" };
           return (
-            <div key={c.label} className={`rounded-xl border bg-surface p-4 ${tone ? "border-border" : "border-border"}`}>
-              <div className="flex items-center justify-between gap-2">
+            <div
+              key={c.label}
+              className={`goal-card relative overflow-hidden rounded-xl border-2 p-4 ${box}`}
+              style={hit ? { animation: "goal-pop .5s ease-out both" } : undefined}
+            >
+              {hit && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-white/60"
+                  style={{ animation: "goal-shine 1.8s ease-in-out .3s 1 both" }}
+                />
+              )}
+              <div className="relative flex items-center justify-between gap-2">
                 <p className="text-xs text-muted">{c.label}</p>
                 {tone && <span className={`h-2.5 w-2.5 rounded-full ${tone.bar}`} aria-hidden />}
               </div>
-              <p className={`mt-1 font-display text-lg ${tone ? tone.text : "text-ink"}`}>{format(c.unit, c.value)}</p>
+              <p className={`relative mt-1 font-display text-lg ${tone ? tone.text : "text-ink"} ${hit ? "text-2xl font-semibold" : ""}`}>{format(c.unit, c.value)}</p>
               {def && target !== null ? (
-                <p className="text-[11px] text-muted">
+                <p className="relative text-[11px] text-muted">
                   meta {def.direction === "lower" ? "≤ " : ""}
                   {format(c.unit, target)}
                 </p>
               ) : (
-                c.note && <p className="text-[11px] text-muted">{c.note}</p>
+                c.note && <p className="relative text-[11px] text-muted">{c.note}</p>
+              )}
+              {badge && (
+                <span className={`relative mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badge.cls}`}>
+                  {badge.text}
+                </span>
               )}
             </div>
           );

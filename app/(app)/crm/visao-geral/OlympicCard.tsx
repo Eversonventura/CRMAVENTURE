@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { OlympicMode, OlympicTargets } from "../olympic";
-import { ladderPosition, olympicProgress } from "../olympic";
+import { olympicProgress } from "../olympic";
+import { OlympicBanner } from "./OlympicBanner";
+import { OlympicTierButton } from "./OlympicTierButton";
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const contracts = (v: number) => `${Math.round(v)} contrato${Math.round(v) === 1 ? "" : "s"}`;
@@ -9,7 +11,7 @@ const TIERS = [
   { key: "bronze", label: "Bronze", color: "#CD7F32", emoji: "🥉" },
   { key: "silver", label: "Prata", color: "#A8A9AD", emoji: "🥈" },
   { key: "gold", label: "Ouro", color: "#D4AF37", emoji: "🥇" },
-  { key: "rmv", label: "RMV", color: "#FF007A", emoji: "🏆" },
+  { key: "rmv", label: "RMV", color: "#FF6FB5", emoji: "🏆" },
 ] as const;
 
 function shiftMonth(month: string, delta: number) {
@@ -20,8 +22,10 @@ function shiftMonth(month: string, delta: number) {
 
 // Meta olímpica do mês: VENDAS FECHADAS no mês × Bronze/Prata/Ouro/RMV, medidas
 // pelo valor vendido (R$) ou pela quantidade de contratos fechados (modo escolhido
-// em Metas). Os pagamentos recebidos aparecem só como informação.
+// em Metas). Desenho do Hub (barra só com os traços dos marcos, uma caixa por
+// medalha, banner e confete ao bater a meta); o modo valor/contratos é daqui.
 export function OlympicCard({
+  scope,
   month,
   monthLabel,
   isCurrentMonth,
@@ -30,9 +34,9 @@ export function OlympicCard({
   progressValue,
   breakdown,
   sales,
-  received,
   periodParam,
 }: {
+  scope: string; // conta ativa (a comemoração "já vista" é guardada por conta)
   month: string;
   monthLabel: string;
   isCurrentMonth: boolean;
@@ -41,12 +45,12 @@ export function OlympicCard({
   progressValue: number; // R$ vendido no mês, ou nº de contratos (conforme o modo)
   breakdown: { label: string; value: number }[];
   sales: { key: string; label: string; client: string; value: number; date: string }[];
-  received: number;
   periodParam: string;
 }) {
   const fmt = mode === "contratos" ? contracts : money;
   const progress = olympicProgress(progressValue, targets);
-  const pct = (v: number) => `${ladderPosition(v, targets)}%`;
+  const scaleMax = Math.max(targets.rmv, progressValue, 1) * 1.02;
+  const pct = (v: number) => `${Math.min(100, (v / scaleMax) * 100)}%`;
   const reached = TIERS.filter((t) => progress.tier !== "none" && TIERS.findIndex((x) => x.key === progress.tier) >= TIERS.findIndex((x) => x.key === t.key));
   const top = reached.at(-1);
   const nextTier = progress.next ? TIERS.find((t) => t.key === progress.next!.key) : null;
@@ -79,74 +83,117 @@ export function OlympicCard({
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-2">
         <p className="font-display text-3xl font-medium text-ink">{fmt(progressValue)}</p>
-        <p className="text-sm text-ink">
-          {top ? (
-            <>
-              {top.emoji} <strong>{top.label}</strong> batido
-            </>
-          ) : (
-            "Ainda abaixo do Bronze"
-          )}
-          {nextTier && progress.next && (
-            <span className="text-muted">
-              {" "}
-              · faltam {fmt(progress.next.remaining)} pro {nextTier.label}
-            </span>
-          )}
-          {!progress.next && <span className="text-muted"> · parabéns! 🎉</span>}
-        </p>
+        {!top && (
+          <p className="text-sm text-ink">
+            Ainda abaixo do Bronze
+            {nextTier && progress.next && (
+              <span className="text-muted">
+                {" "}
+                · faltam {fmt(progress.next.remaining)} pro {nextTier.label}
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
-      {/* Barra com os marcos */}
-      <div className="relative mt-8 mb-8 h-3 rounded-full bg-surface2 sm:mb-10">
-        <div className="h-full rounded-full bg-brand/80" style={{ width: pct(progressValue) }} />
+      <OlympicBanner
+        scope={scope}
+        month={month}
+        isCurrentMonth={isCurrentMonth}
+        tier={top ? { key: top.key, label: top.label, emoji: top.emoji, color: top.color } : null}
+        next={nextTier && progress.next ? { label: nextTier.label, remainingLabel: fmt(progress.next.remaining) } : null}
+      />
+
+      {/* Barra: só os traços dos marcos (sem texto em cima da barra — no celular os nomes se sobrepunham) */}
+      <div className="relative mt-5 h-3 rounded-full bg-surface2">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: pct(progressValue),
+            background: top ? `linear-gradient(90deg, #FF007A 0%, ${top.color} 100%)` : "rgba(255,0,122,0.8)",
+            boxShadow: top ? `0 0 12px ${top.color}99` : undefined,
+          }}
+        />
         {TIERS.map((t) => {
-          const value = targets[t.key];
-          const hit = progressValue >= value;
+          const hit = progressValue >= targets[t.key];
           return (
-            <div
+            <span
               key={t.key}
-              className={`absolute top-0 ${t.key === "rmv" ? "-translate-x-full" : "-translate-x-1/2"}`}
-              style={{ left: pct(value) }}
-            >
-              <div className={`h-3 w-0.5 ${t.key === "rmv" ? "ml-auto" : "mx-auto"}`} style={{ backgroundColor: t.color }} />
-              <div className={`mt-1 ${t.key === "rmv" ? "text-right" : "text-center"}`} style={{ minWidth: 64 }}>
-                <p className={`whitespace-nowrap text-[11px] font-medium ${hit ? "text-ink" : "text-muted"}`}>
-                  <span className="sm:hidden">{t.emoji}</span>
-                  <span className="hidden sm:inline">
-                    {t.emoji} {t.label}
-                  </span>
-                </p>
-                <p className="hidden whitespace-nowrap text-[10px] text-muted sm:block">{fmt(value)}</p>
-              </div>
-            </div>
+              className={`absolute -translate-x-1/2 rounded-full ring-1 ring-white ${hit ? "top-[-6px] h-[24px] w-[5px]" : "top-[-3px] h-[18px] w-[3px]"}`}
+              style={{
+                left: pct(targets[t.key]),
+                backgroundColor: t.color,
+                boxShadow: hit ? `0 0 10px 2px ${t.color}` : undefined,
+              }}
+              aria-hidden
+            />
           );
         })}
       </div>
 
-      {/* Celular: a barra é estreita, então os valores dos marcos vão numa legenda. */}
-      <div className="-mt-3 mb-4 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted sm:hidden">
-        {TIERS.map((t) => (
-          <p key={t.key}>
-            {t.emoji} {t.label}: <span className="text-ink">{fmt(targets[t.key])}</span>
-          </p>
-        ))}
+      {/* Legenda dos marcos: uma caixinha por meta, sem sobreposição em qualquer largura */}
+      <style>{`
+        @keyframes olympic-tier-in { 0% { transform: scale(.94); opacity: .4 } 60% { transform: scale(1.04) } 100% { transform: scale(1); opacity: 1 } }
+        @media (prefers-reduced-motion: reduce) { .olympic-tier-hit { animation: none !important } }
+      `}</style>
+      <div className="mb-5 mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {TIERS.map((t) => {
+          const value = targets[t.key];
+          const hit = progressValue >= value;
+          const content = (
+            <>
+              <div className="flex items-center justify-between gap-1">
+                <p className={`flex items-center gap-1.5 text-sm ${hit ? "font-semibold text-ink" : "font-medium text-muted"}`}>
+                  <span
+                    className={hit ? "text-xl leading-none" : "text-base leading-none opacity-60"}
+                    style={t.key === "rmv" ? { filter: "hue-rotate(290deg) saturate(1.35) brightness(1.05)" } : undefined}
+                  >
+                    {t.emoji}
+                  </span>
+                  {t.label}
+                </p>
+                {hit && (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white" style={{ backgroundColor: t.color }}>
+                    ✓ Batido
+                  </span>
+                )}
+              </div>
+              <p className={`mt-1 ${hit ? "text-base font-semibold text-ink" : "text-sm text-muted"}`}>{fmt(value)}</p>
+              {hit ? <p className="text-[11px] text-ink/60">clique para comemorar</p> : <p className="text-[11px] text-muted">faltam {fmt(value - progressValue)}</p>}
+            </>
+          );
+          if (!hit) {
+            return (
+              <div key={t.key} className="rounded-xl border-2 border-border bg-white px-3 py-2.5">
+                {content}
+              </div>
+            );
+          }
+          return (
+            <OlympicTierButton
+              key={t.key}
+              tier={{ key: t.key, label: t.label, emoji: t.emoji, color: t.color }}
+              style={{
+                borderColor: t.color,
+                background: `linear-gradient(135deg, ${t.color}33 0%, ${t.color}0f 100%)`,
+                boxShadow: `0 4px 16px ${t.color}40`,
+                animation: "olympic-tier-in .6s ease-out both",
+              }}
+            >
+              {content}
+            </OlympicTierButton>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {breakdown.map((b) => (
           <div key={b.label} className="rounded-lg border border-border bg-white px-3 py-2">
             <p className="text-xs text-muted">{b.label}</p>
             <p className="font-medium text-ink">{fmt(b.value)}</p>
           </div>
         ))}
-        <div className="rounded-lg border border-dashed border-border bg-white px-3 py-2">
-          <p className="text-xs text-muted">Recebido no mês (caixa)</p>
-          <p className="font-medium text-ink">{money(received)}</p>
-          <p className="text-[10px] text-muted">só informativo — a meta usa as vendas</p>
-        </div>
       </div>
-
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-xs text-muted hover:text-ink">Ver as {sales.length} venda(s) deste mês</summary>
         <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-white">

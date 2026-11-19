@@ -28,7 +28,19 @@ export function ClosedDealModal({
   const [monthly, setMonthly] = useState(defaultValue ? String(defaultValue) : "");
   const [dueDay, setDueDay] = useState(String(new Date().getDate()));
   const [startDate, setStartDate] = useState(today);
-  const [firstMode, setFirstMode] = useState<"normal" | "custom">("normal");
+  const [firstMode, setFirstMode] = useState<"normal" | "custom" | "desconto">("normal");
+  const [discountKind, setDiscountKind] = useState<"valor" | "pct">("pct");
+  const [discount, setDiscount] = useState("");
+  const [firstPaid, setFirstPaid] = useState(false);
+
+  const monthlyNum = Number(monthly.replace(",", ".")) || 0;
+  const discountNum = Number(discount.replace(",", ".")) || 0;
+  const discountValue = Math.min(
+    monthlyNum,
+    Math.max(0, discountKind === "pct" ? Math.round(monthlyNum * discountNum) / 100 : discountNum)
+  );
+  const firstAmount = Math.round((monthlyNum - discountValue) * 100) / 100;
+  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -109,17 +121,64 @@ export function ClosedDealModal({
                     <span className="block text-xs text-muted">Ex.: 50% agora e 50% no dia 1º, com início do serviço depois. As mensalidades seguintes só começam no mês seguinte.</span>
                   </span>
                 </label>
+                <label className="mt-2 flex items-start gap-2 text-sm">
+                  <input type="radio" checked={firstMode === "desconto"} onChange={() => setFirstMode("desconto")} className="mt-1" />
+                  <span>
+                    <span className="text-ink">Com desconto na 1ª mensalidade</span>
+                    <span className="block text-xs text-muted">Ex.: campanha de 40% na 1ª mensalidade. Depois volta ao valor cheio.</span>
+                  </span>
+                </label>
               </div>
+              {firstMode === "desconto" && (
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-xs text-muted">Tipo de desconto</span>
+                      <select value={discountKind} onChange={(e) => setDiscountKind(e.target.value as "valor" | "pct")} className={`${input} w-full`}>
+                        <option value="pct">Porcentagem (%)</option>
+                        <option value="valor">Valor (R$)</option>
+                      </select>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-muted">Desconto {discountKind === "pct" ? "(%)" : "(R$)"}</span>
+                      <input value={discount} inputMode="decimal" onChange={(e) => setDiscount(e.target.value)} className={`${input} w-full`} placeholder={discountKind === "pct" ? "40" : "800"} />
+                    </label>
+                  </div>
+                  <p className="text-sm text-ink">
+                    1ª mensalidade: <strong>{brl(firstAmount)}</strong> (vence em {startDate.split("-").reverse().join("/")}) · a partir do mês seguinte:{" "}
+                    <strong>{brl(monthlyNum)}</strong>
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-muted">
+                    <input type="checkbox" checked={firstPaid} onChange={(e) => setFirstPaid(e.target.checked)} />
+                    Já foi paga
+                  </label>
+                </div>
+              )}
               <p className="text-xs text-muted">
-                Grava no cadastro do cliente. Nas metas, só a 1ª mensalidade conta como dinheiro novo.
+                Grava no cadastro do cliente. A meta olímpica conta a venda (a mensalidade cheia); desconto e parcelas só mudam o que será recebido em Recebimentos.
               </p>
               {error && <p className="text-sm text-brand">{error}</p>}
-              {firstMode === "normal" ? (
+              {firstMode === "normal" || firstMode === "desconto" ? (
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={onClose} className="rounded-lg border border-border px-3.5 py-2 text-sm text-muted hover:text-ink">
                     Definir depois
                   </button>
-                  <button type="button" disabled={busy} onClick={() => saveRecurring()} className="rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white disabled:opacity-60">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (firstMode === "normal") return saveRecurring();
+                      if (!(firstAmount > 0)) {
+                        setError("O desconto precisa deixar a 1ª mensalidade maior que zero.");
+                        return;
+                      }
+                      if (!(discountValue > 0)) {
+                        setError("Informe o desconto, ou escolha \"Parcela única\".");
+                        return;
+                      }
+                      return saveRecurring([{ amount: firstAmount, dueDate: startDate, paid: firstPaid }]);
+                    }}
+                    className="rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white disabled:opacity-60">
                     {busy ? "Salvando..." : "Salvar recorrência"}
                   </button>
                 </div>

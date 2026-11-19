@@ -442,7 +442,12 @@ export function FunilBoard({
           opportunity={lostTarget}
           onClose={() => setLostTarget(null)}
           onDone={() => {
-            setItems((prev) => prev.filter((o) => o.id !== lostTarget.id));
+            // Fica visível na coluna Perdido (o Funil mostra perdidas por 3 meses).
+            setItems((prev) =>
+              lostStage
+                ? prev.map((o) => (o.id === lostTarget.id ? { ...o, stageId: lostStage.id, status: "perdida" } : o))
+                : prev.filter((o) => o.id !== lostTarget.id)
+            );
             setLostTarget(null);
           }}
         />
