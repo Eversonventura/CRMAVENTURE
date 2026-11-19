@@ -9,6 +9,15 @@
 - Antes de commitar: `npx tsc --noEmit` e `npm run build` limpos. Mudança de schema vai em `supabase/schema.sql` **e** em `supabase/migrations/NNN_nome.sql` (o que o usuário roda no SQL Editor para um banco que já existe).
 - Publicar: push na branch de trabalho e em `main` (a Vercel faz o deploy sozinha).
 
+## Sincronização com o CRM do Aventure Hub
+- Este sistema nasceu como cópia do módulo CRM do Hub (`Eversonventura/aventure-hub`, `app/(admin)/crm`) e **divergiu de propósito**. Atualizações do Hub são trazidas por sprint, com revisão, nunca copiadas por cima.
+- Quando o usuário pedir para sincronizar com o Hub (ou mencionar que atualizou o CRM no Hub): leia `logs/HUB-SYNC.md`, rode `scripts/hub-changes.sh`, classifique cada commit (trazer / não trazer / adaptar), aplique com `scripts/hub-port.sh <hash>`, resolva os `.rej`, e atualize `ULTIMO_COMMIT_SINCRONIZADO` e a tabela de `logs/HUB-SYNC.md` no mesmo commit da sprint.
+- Não traga o que é só do Hub (Impulso, Desbrava, Clientes, Financeiro, Anúncios, Orçamentos, WhatsApp). Ao adaptar, lembre que vendedor só vê as próprias oportunidades (RLS) e que tudo é por conta (`workspace_id`).
+- Se o Hub mudou o banco do CRM, escreva a migration aqui (schema + `supabase/migrations/`) e peça ao usuário para rodá-la.
+
+## Contrato com o Hub (a área de membros Desbrava usa este banco)
+O Hub cria/lê contas aqui com a chave de serviço. **Não renomeie nem remova**, sem combinar com o usuário: gatilho `handle_new_user` (cria a conta própria "Conta de <nome>"), `profiles.id/email`, `workspaces(id, name, owner_id, created_at)`, função `seed_workspace_defaults(p_ws uuid)` (execução liberada para `service_role`), `team_members(workspace_id, profile_id, full_name, email, crm_role)` único em `(workspace_id, profile_id)` com `crm_role` ∈ administrador/gestor/vendedor, e `crm_opportunities(workspace_id, status, closed_at, estimated_value)`. Detalhes em `logs/HUB-SYNC.md`.
+
 ## Formato de `logs/sprint-N.md`
 ```
 # Sprint N — título curto

@@ -11,3 +11,4 @@
 | Meta olímpica: marcos Bronze/Prata/Ouro/RMV em escada (sem sobreposição) e legenda de valores no celular | 6 |
 | Hub → avantecrm, lote 1: Excluir lead, Diário prioriza lead com telefone, contato cadastrado/importado entra em Novo lead, etapas do funil com títulos mais claros | 7 |
 | Meta olímpica por vendas fechadas (regra do Hub) com escolha de medir por valor ou por contratos fechados; gráficos na Visão geral | 8 |
+| Sincronização assistida com o Hub: registro (logs/HUB-SYNC.md), scripts hub-changes/hub-port, regras e contrato com o Desbrava no CLAUDE.md | 9 |
