@@ -395,6 +395,17 @@ export async function moveOpportunityStage(id: string, stageId: string) {
   // numa coluna que não bate com o banco, sem erro nenhum aparecer.
   if (moveError) return { error: moveError.message };
 
+  // Voltou para uma etapa em andamento: se estava fechada ou perdida (o Funil
+  // mostra essas por 3 meses), a oportunidade reabre. O gatilho do banco zera
+  // closed_at/lost_at.
+  if (toStage?.kind === "open") {
+    await supabase
+      .from("crm_opportunities")
+      .update({ status: "aberta" })
+      .eq("id", id)
+      .neq("status", "aberta");
+  }
+
   const fromStage = Array.isArray(before?.crm_stages) ? before?.crm_stages[0] : before?.crm_stages;
   const fromName = fromStage?.name;
   await logCrmActivity(

@@ -12,3 +12,4 @@
 | Hub → avantecrm, lote 1: Excluir lead, Diário prioriza lead com telefone, contato cadastrado/importado entra em Novo lead, etapas do funil com títulos mais claros | 7 |
 | Meta olímpica por vendas fechadas (regra do Hub) com escolha de medir por valor ou por contratos fechados; gráficos na Visão geral | 8 |
 | Sincronização assistida com o Hub: registro (logs/HUB-SYNC.md), scripts hub-changes/hub-port, regras e contrato com o Desbrava no CLAUDE.md | 9 |
+| Hub → avantecrm (24ae357): Funil mostra fechados e perdidos por 3 meses e arrastar de volta reabre a oportunidade | 10 |

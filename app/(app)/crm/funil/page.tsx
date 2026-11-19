@@ -15,6 +15,10 @@ export default async function CrmFunilPage({
   await getCrmAccessContext();
   const access = await getAccessContext();
 
+  // Fechadas e perdidas ficam visíveis no Funil por 3 meses (contados da data
+  // de fechamento/perda); depois saem da tela, mas continuam no banco.
+  const keepSince = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
   const [{ data: pipelineRows }, { data: allStages }, { data: opportunities }, { data: history }, { data: teamMembers }] =
     await Promise.all([
       supabase.from("crm_pipelines").select("id, name").order("position"),
@@ -24,7 +28,9 @@ export default async function CrmFunilPage({
         .select(
           "id, company_id, contact_id, stage_id, status, estimated_value, service_interest, acquisition_channel, event_name, close_probability, search_reason, main_problem, desired_objective, available_budget, decision_maker, start_deadline, referred_by, referral_related_client, referral_type, referral_date, referral_result, ad_platform, campaign, ad_set, ad, keyword, landing_page, form_name, responsible_id, temperature, expected_close_date, entered_at, created_at, crm_companies(name, website, segment, city, employee_count, approx_revenue, instagram, cnpj, postal_code, google_business_url, other_social_url, bio_link, internal_notes), crm_contacts(name, role_title, phone, whatsapp, email, contact_preference)"
         )
-        .eq("status", "aberta"),
+        .or(
+          `status.eq.aberta,and(status.eq.fechada,closed_at.gte.${keepSince}),and(status.eq.perdida,lost_at.gte.${keepSince})`
+        ),
       supabase
         .from("crm_stage_history")
         .select("opportunity_id, to_stage_id, changed_at")

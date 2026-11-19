@@ -12,7 +12,7 @@ elas são **trazidas por sprint**, com revisão. Este arquivo é o registro.
 Tudo do CRM do Hub até o commit abaixo já foi avaliado (trazido ou descartado,
 conforme a tabela). Atualize esta linha ao terminar cada sincronização.
 
-ULTIMO_COMMIT_SINCRONIZADO=768bd0f
+ULTIMO_COMMIT_SINCRONIZADO=24ae357
 
 ## Como sincronizar (quando o usuário pedir "sincroniza com o Hub")
 
@@ -60,3 +60,4 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 | `5485feb` | Impulso: fila no Diário e link para o negócio | Não trazer (Impulso é do Hub) |
 | `6a0f1d0` | Visão geral com gráficos (pizza e barras) | Trazido — Sprint 8 |
 | `768bd0f` | Etapas do funil com títulos e nomes de papel mais claros | Trazido — Sprint 7 |
+| `24ae357` | Funil: fechados e perdidos visíveis por 3 meses; arrastar de volta reabre | Trazido — Sprint 10 |
