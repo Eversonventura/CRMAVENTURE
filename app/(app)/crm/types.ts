@@ -53,8 +53,8 @@ export type StageRole =
   | "standby";
 
 export const STAGE_KIND_LABELS: Record<StageKind, string> = {
-  open: "Em andamento",
-  won: "Fechado (ganho)",
+  open: "Acompanhar",
+  won: "Fechado",
   lost: "Perdido",
 };
 

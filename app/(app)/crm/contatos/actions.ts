@@ -1,6 +1,6 @@
 "use server";
 
-import { findPipelineStage, getDefaultPipelineId } from "../stage-lookup";
+import { getDefaultPipelineId } from "../stage-lookup";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCompany, findOrCreateContact, type CrmFormState } from "../actions";
@@ -23,6 +23,19 @@ function companyFieldsFromForm(formData: FormData) {
   };
 }
 
+// Etapa de entrada dos leads novos: o pipeline pode ter mais de uma etapa
+// com role `lead` (ex.: "Desbrava"); leads cadastrados entram em "Novo lead".
+async function findNewLeadStage(supabase: Awaited<ReturnType<typeof createClient>>, pipelineId: string) {
+  const { data } = await supabase
+    .from("crm_stages")
+    .select("id, name")
+    .eq("pipeline_id", pipelineId)
+    .eq("role", "lead")
+    .order("position");
+  const stages = data ?? [];
+  return stages.find((st) => st.name.trim().toLowerCase() === "novo lead") ?? stages[0] ?? null;
+}
+
 export async function createCompanyContactAction(
   _prevState: CrmFormState,
   formData: FormData
@@ -36,19 +49,45 @@ export async function createCompanyContactAction(
     const companyId = await findOrCreateCompany(supabase, companyName, companyFieldsFromForm(formData));
 
     const contactName = resolveContactName(formData, companyName);
-    if (contactName) {
-      await findOrCreateContact(supabase, companyId, contactName, {
-        role_title: (formData.get("contact_role") as string)?.trim() || null,
-        phone: (formData.get("contact_phone") as string)?.trim() || null,
-        whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
-        email: (formData.get("contact_email") as string)?.trim() || null,
+    const contactId = contactName
+      ? await findOrCreateContact(supabase, companyId, contactName, {
+          role_title: (formData.get("contact_role") as string)?.trim() || null,
+          phone: (formData.get("contact_phone") as string)?.trim() || null,
+          whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
+          email: (formData.get("contact_email") as string)?.trim() || null,
+        })
+      : null;
+
+    // Contato novo vira lead: entra em "Novo lead" no funil, a menos que a
+    // empresa já tenha uma oportunidade aberta.
+    const { count } = await supabase
+      .from("crm_opportunities")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("status", "aberta");
+    if ((count ?? 0) === 0) {
+      const defaultPipelineId = await getDefaultPipelineId(supabase);
+      const stage = defaultPipelineId ? await findNewLeadStage(supabase, defaultPipelineId) : null;
+      if (!stage) return { error: "Etapa de entrada (Novo lead) não encontrada." };
+      const { error } = await supabase.from("crm_opportunities").insert({
+        company_id: companyId,
+        contact_id: contactId,
+        stage_id: stage.id,
+        acquisition_channel: "Outro",
+        first_touch_channel: "Outro",
+        last_touch_channel: "Outro",
+        search_reason: "Lead cadastrado em Contatos e Empresas.",
       });
+      if (error) return { error: error.message };
     }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erro inesperado." };
   }
 
   revalidatePath("/crm/contatos");
+  revalidatePath("/crm/funil");
+  revalidatePath("/crm/diario");
+  revalidatePath("/crm/visao-geral");
   return {};
 }
 
@@ -147,9 +186,7 @@ export async function confirmImport(
   // Etapa de entrada = a de role `lead` do pipeline padrão (o nome pode
   // ter sido trocado).
   const defaultPipelineId = await getDefaultPipelineId(supabase);
-  const stage = defaultPipelineId
-    ? await findPipelineStage(supabase, defaultPipelineId, { role: "lead" })
-    : null;
+  const stage = defaultPipelineId ? await findNewLeadStage(supabase, defaultPipelineId) : null;
   if (!stage) return { error: "Etapa de entrada (Novo lead) não encontrada.", created: 0, skipped: 0 };
 
   const get = (row: string[], key: SystemFieldKey) => {

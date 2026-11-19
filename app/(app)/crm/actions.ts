@@ -4,6 +4,7 @@ import { findPipelineStage } from "./stage-lookup";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
+import { getCrmAccessContext } from "./lib";
 import { resolveContactName } from "./contactUtils";
 import { logCrmActivity } from "./activity";
 import { cancelActiveCadences, startCadence, type CadenceType } from "./cadence";
@@ -858,4 +859,44 @@ export async function getActivityFileSignedUrl(path: string) {
     .createSignedUrl(path, 300);
   if (error) return null;
   return data.signedUrl;
+}
+
+// Exclui o lead de vez: a oportunidade e, se for a única daquela empresa, a
+// empresa e os contatos junto (cascata remove tarefas, histórico, atividades,
+// propostas e a lista do Diário). Recebíveis já lançados ficam, só perdem o
+// vínculo. Se a empresa ainda tem outra oportunidade, só esta é apagada.
+export async function deleteOpportunityAction(opportunityId: string): Promise<{ error?: string; companyKept?: boolean }> {
+  const supabase = await createClient();
+  const { data: opp } = await supabase
+    .from("crm_opportunities")
+    .select("id, company_id, contact_id")
+    .eq("id", opportunityId)
+    .maybeSingle();
+  if (!opp) return { error: "Lead não encontrado ou sem permissão." };
+
+  const { count } = await supabase
+    .from("crm_opportunities")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", opp.company_id)
+    .neq("id", opp.id);
+
+  // Vendedor só enxerga as próprias oportunidades: não dá para saber se outra
+  // pessoa também trabalha com essa empresa. Nesse caso apaga só esta oportunidade
+  // e preserva a empresa (e os contatos), para nunca levar embora o lead de outro.
+  const { canSeeAll } = await getCrmAccessContext();
+
+  let companyKept = false;
+  if ((count ?? 0) === 0 && canSeeAll) {
+    const { data, error } = await supabase.from("crm_companies").delete().eq("id", opp.company_id).select("id");
+    if (error) return { error: error.message };
+    if (!data?.length) return { error: "Sem permissão para excluir este lead." };
+  } else {
+    companyKept = true;
+    const { data, error } = await supabase.from("crm_opportunities").delete().eq("id", opp.id).select("id");
+    if (error) return { error: error.message };
+    if (!data?.length) return { error: "Sem permissão para excluir este lead." };
+  }
+
+  revalidateCrmViews();
+  return { companyKept };
 }

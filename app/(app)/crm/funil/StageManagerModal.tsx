@@ -18,6 +18,17 @@ const inputClass =
 // Gerenciador de etapas do pipeline atual: renomear, cor, papel (alimenta
 // o Diário e as regras de follow-up), tipo, reordenar e excluir (com
 // destino pros cards). Cada alteração salva na hora.
+// Nomes mostrados só neste seletor (o Diário continua usando STAGE_ROLE_LABELS).
+const ROLE_OPTION_LABELS: Record<StageRole, string> = {
+  lead: "Lead",
+  tentativa: "Prospect — tentativa de contato",
+  contato: "Prospect — contato realizado",
+  briefing: "Qualificado — pré-briefing",
+  diagnostico_proposta: "Qualificado — diagnóstico / proposta",
+  negociacao: "Qualificado — negociação",
+  standby: "Stand-by (aquecimento)",
+};
+
 export function StageManagerModal({
   pipelineId,
   stages,
@@ -59,8 +70,9 @@ export function StageManagerModal({
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-xl">
         <h2 className="font-display text-xl font-medium text-ink">Etapas do funil</h2>
         <p className="mt-1 text-xs text-muted">
-          O <strong>papel</strong> diz ao sistema o que a etapa representa (Diário, follow-ups e automações usam
-          isso, não o nome) — pode renomear à vontade. Mudanças salvam na hora.
+          O <strong>nome</strong> é a coluna do funil, e você pode renomear à vontade. O <strong>papel</strong> diz ao sistema
+          em que fase do processo a etapa está (Diário, follow-ups e automações usam isso, não o nome). A
+          <strong> situação</strong> diz se a etapa é acompanhada, fechada ou perdida. Mudanças salvam na hora.
         </p>
 
         <div className="mt-4 space-y-2">
@@ -68,6 +80,8 @@ export function StageManagerModal({
             <div key={stage.id} className="rounded-lg border border-border p-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <StageColorPicker stageId={stage.id} color={stage.color} size={18} />
+                <label className="flex min-w-[160px] flex-1 flex-col gap-0.5 text-[11px] text-muted">
+                  Nome da etapa
                 <input
                   defaultValue={stage.name}
                   onBlur={(e) => {
@@ -77,6 +91,9 @@ export function StageManagerModal({
                   className={`${inputClass} min-w-[160px] flex-1 font-medium`}
                   aria-label="Nome da etapa"
                 />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[11px] text-muted">
+                  Papel no processo
                 <select
                   defaultValue={stage.role ?? ""}
                   onChange={(e) =>
@@ -89,10 +106,13 @@ export function StageManagerModal({
                   <option value="">Sem papel especial</option>
                   {(Object.keys(STAGE_ROLE_LABELS) as StageRole[]).map((r) => (
                     <option key={r} value={r}>
-                      {STAGE_ROLE_LABELS[r]}
+                      {ROLE_OPTION_LABELS[r]}
                     </option>
                   ))}
                 </select>
+                </label>
+                <label className="flex flex-col gap-0.5 text-[11px] text-muted">
+                  Situação
                 <select
                   defaultValue={stage.kind}
                   onChange={async (e) => {
@@ -108,7 +128,8 @@ export function StageManagerModal({
                     </option>
                   ))}
                 </select>
-                <div className="flex items-center gap-1">
+                </label>
+                <div className="flex items-center gap-1 self-end">
                   <button
                     type="button"
                     disabled={busy || index === 0}

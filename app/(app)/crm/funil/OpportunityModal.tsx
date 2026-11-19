@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import {
   createOpportunityAction,
+  deleteOpportunityAction,
   startCadenceAction,
   updateOpportunityAction,
   type CrmFormState,
@@ -100,6 +101,9 @@ export function OpportunityModal({
   const [state, formAction, pending] = useActionState<CrmFormState, FormData>(action, {});
   const prevPending = useRef(pending);
   const [dirty, setDirty] = useState(false);
+  const [, startTransition] = useTransition();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [channel, setChannel] = useState(opportunity?.acquisitionChannel ?? "");
   const isReferral = channel === "Indicação passiva" || channel === "Indicação ativa";
   const isPaidTraffic = channel === "Tráfego pago";
@@ -458,7 +462,35 @@ export function OpportunityModal({
 
           {state.error && <p className="text-sm text-brand">{state.error}</p>}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-between gap-2">
+            {isEdit ? (
+              <button
+                type="button"
+                disabled={pending || deleting}
+                onClick={() => {
+                  const name = opportunity!.companyName;
+                  const sold = opportunity!.status === "fechada";
+                  const msg =
+                    `Excluir o lead "${name}" de vez?\n\n` +
+                    `Some a empresa, o contato, as tarefas, o histórico e as anotações. Não dá para desfazer.` +
+                    (sold ? "\n\nEste lead já tem venda fechada: os recebimentos permanecem." : "");
+                  if (!window.confirm(msg)) return;
+                  setDeleting(true);
+                  startTransition(async () => {
+                    const res = await deleteOpportunityAction(opportunity!.id);
+                    setDeleting(false);
+                    if (res.error) setDeleteError(res.error);
+                    else onClose();
+                  });
+                }}
+                className="rounded-lg px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+              >
+                {deleting ? "Excluindo..." : "Excluir lead"}
+              </button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -473,7 +505,9 @@ export function OpportunityModal({
             >
               {pending ? "Salvando..." : "Salvar"}
             </button>
+            </div>
           </div>
+          {deleteError && <p className="text-sm text-brand">{deleteError}</p>}
           </form>
         </div>
 
