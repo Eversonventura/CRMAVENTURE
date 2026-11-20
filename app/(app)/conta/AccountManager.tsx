@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import {
   cancelInvite,
-  createWorkspace,
   deleteWorkspace,
   inviteMember,
   removeMember,
@@ -55,7 +54,6 @@ export function AccountManager({
   const [name, setName] = useState(workspace.name);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("vendedor");
-  const [newWorkspace, setNewWorkspace] = useState("");
 
   function run(action: () => Promise<{ error?: string; message?: string }>, after?: () => void) {
     setFeedback(null);
@@ -218,31 +216,6 @@ export function AccountManager({
         ) : (
           <p className="mt-4 text-xs text-muted">Só administradores da conta convidam ou removem pessoas.</p>
         )}
-      </section>
-
-      <section className="rounded-xl border border-border bg-surface p-5">
-        <h2 className="font-display text-base font-medium text-ink">Outra conta</h2>
-        <p className="mt-1 text-xs text-muted">
-          Crie uma conta separada (por exemplo, para outro negócio). Ela começa com funil, metas e regras padrão.
-        </p>
-        <form
-          className="mt-3 flex flex-wrap gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            run(() => createWorkspace(newWorkspace), () => setNewWorkspace(""));
-          }}
-        >
-          <input
-            required
-            value={newWorkspace}
-            onChange={(e) => setNewWorkspace(e.target.value)}
-            placeholder="Nome da nova conta"
-            className={`${input} min-w-[220px] flex-1`}
-          />
-          <button type="submit" disabled={pending} className={ghost}>
-            Criar conta
-          </button>
-        </form>
       </section>
 
       {workspace.isOwner && (

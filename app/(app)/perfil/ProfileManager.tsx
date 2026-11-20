@@ -246,7 +246,7 @@ export function ProfileManager({
           })}
         </ul>
         <p className="mt-3 text-xs text-muted">
-          Para convidar pessoas ou criar outra conta, vá em{" "}
+          Para convidar pessoas para a sua conta, vá em{" "}
           <Link href="/conta" className="text-brand hover:underline">
             Compartilhar conta
           </Link>

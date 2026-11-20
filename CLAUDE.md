@@ -16,7 +16,7 @@
 - Se o Hub mudou o banco do CRM, escreva a migration aqui (schema + `supabase/migrations/`) e peça ao usuário para rodá-la.
 
 ## Contrato com o Hub (a área de membros Desbrava usa este banco)
-O Hub cria/lê contas aqui com a chave de serviço. **Não renomeie nem remova**, sem combinar com o usuário: gatilho `handle_new_user` (cria a conta própria "Conta de <nome>"), `profiles.id/email`, `workspaces(id, name, owner_id, created_at)`, função `seed_workspace_defaults(p_ws uuid)` (execução liberada para `service_role`), `team_members(workspace_id, profile_id, full_name, email, crm_role)` único em `(workspace_id, profile_id)` com `crm_role` ∈ administrador/gestor/vendedor, e `crm_opportunities(workspace_id, status, closed_at, estimated_value)`. Detalhes em `logs/HUB-SYNC.md`.
+O Hub cria/lê contas aqui com a chave de serviço. **Não renomeie nem remova**, sem combinar com o usuário: gatilho `handle_new_user` (cria a conta própria "Conta de <nome>"), `profiles.id/email`, `workspaces(id, name, owner_id, created_at)`, função `seed_workspace_defaults(p_ws uuid)` (execução liberada para `service_role`), `team_members(workspace_id, profile_id, full_name, email, crm_role)` único em `(workspace_id, profile_id)` com `crm_role` ∈ administrador/gestor/vendedor, e `crm_opportunities(workspace_id, status, closed_at, estimated_value)`. **Só o Hub cria contas**: o usuário do CRM não cria conta nova (não recrie `create_workspace` nem botões de "criar conta"); ele só convida pessoas para a conta que já tem. Detalhes em `logs/HUB-SYNC.md`.
 
 ## Formato de `logs/sprint-N.md`
 ```

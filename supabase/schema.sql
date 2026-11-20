@@ -8,6 +8,8 @@
 --     gestor ou vendedor). Se a pessoa já tem login, entra na hora; se não,
 --     o convite fica pendente e vale assim que ela se cadastrar.
 --   * Um usuário pode participar de várias contas e alternar entre elas.
+--   * Quem CRIA contas é o Aventure Hub (com a chave de serviço); o usuário do CRM
+--     não cria conta nova, só convida pessoas para a conta que já tem.
 --
 -- Isolamento: toda tabela tem workspace_id (default = conta ativa) e RLS.
 -- A conta ativa vem do header `x-workspace-id` enviado pelo app; só vale se
@@ -643,28 +645,6 @@ begin
 end;
 $$;
 
-create function public.create_workspace(p_name text)
-returns uuid
-language plpgsql security definer
-set search_path = public
-as $$
-declare
-  v_ws uuid;
-  p public.profiles;
-begin
-  if auth.uid() is null then raise exception 'Sessão expirada.'; end if;
-  if coalesce(trim(p_name), '') = '' then raise exception 'Informe o nome da conta.'; end if;
-  select * into p from public.profiles where id = auth.uid();
-
-  insert into public.workspaces (name, owner_id) values (trim(p_name), auth.uid())
-  returning id into v_ws;
-  insert into public.team_members (workspace_id, profile_id, full_name, email, photo_url, crm_role)
-  values (v_ws, auth.uid(), p.full_name, p.email, p.photo_url, 'administrador');
-  perform public.seed_workspace_defaults(v_ws);
-  return v_ws;
-end;
-$$;
-
 create function public.rename_workspace(p_ws uuid, p_name text)
 returns void
 language plpgsql security definer
@@ -687,7 +667,7 @@ begin
     raise exception 'Só o dono da conta pode excluí-la.';
   end if;
   if (select count(*) from public.team_members where profile_id = auth.uid()) <= 1 then
-    raise exception 'Você precisa manter ao menos uma conta. Crie outra antes de excluir esta.';
+    raise exception 'Você precisa manter ao menos uma conta.';
   end if;
   delete from public.workspaces where id = p_ws;
 end;
@@ -935,7 +915,6 @@ revoke all on function public.seed_workspace_defaults(uuid) from public, anon, a
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 revoke all on function public.sync_profile_to_members() from public, anon, authenticated;
 
-grant execute on function public.create_workspace(text) to authenticated;
 grant execute on function public.rename_workspace(uuid, text) to authenticated;
 grant execute on function public.delete_workspace(uuid) to authenticated;
 grant execute on function public.invite_to_workspace(uuid, text, text) to authenticated;

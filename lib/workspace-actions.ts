@@ -47,15 +47,6 @@ export async function switchWorkspace(id: string): Promise<Result> {
   return {};
 }
 
-export async function createWorkspace(name: string): Promise<Result> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_workspace", { p_name: name });
-  if (error) return fail(error);
-  await setActiveCookie(data as string);
-  refresh();
-  return {};
-}
-
 export async function renameWorkspace(id: string, name: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("rename_workspace", { p_ws: id, p_name: name });

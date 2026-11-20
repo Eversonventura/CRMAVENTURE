@@ -14,3 +14,4 @@
 | Sincronização assistida com o Hub: registro (logs/HUB-SYNC.md), scripts hub-changes/hub-port, regras e contrato com o Desbrava no CLAUDE.md | 9 |
 | Hub → avantecrm (24ae357): Funil mostra fechados e perdidos por 3 meses e arrastar de volta reabre a oportunidade | 10 |
 | Hub → avantecrm (24ae357..6b6c598): meta olímpica com banner, confete e caixas por medalha; venda recorrente usa a mensalidade; desconto na 1ª mensalidade; cartões de metas com destaque; card perdido na hora | 11 |
+| Só o Hub cria contas: removido "Outra conta" da tela e a função create_workspace do banco (migration 002) | 12 |

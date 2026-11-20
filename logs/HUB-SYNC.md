@@ -44,6 +44,7 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 | `team_members` (`workspace_id`, `profile_id`, `full_name`, `email`, `crm_role`), único em `(workspace_id, profile_id)` | o Hub faz upsert; `crm_role` ∈ `administrador` / `gestor` / `vendedor` |
 | `crm_opportunities` (`workspace_id`, `status`, `closed_at`, `estimated_value`) | o Hub soma as vendas fechadas por mês (Mapa de Metas e cartão de vendas reais) |
 | Auth: criação de usuário com e-mail confirmado e bloqueio (`ban_duration`) | suspensão e reativação de acesso pelo Hub |
+| (regra) **só o Hub cria contas** | a função `create_workspace` foi removida (Sprint 12); o usuário do CRM só convida pessoas para a conta que já tem. O Hub cria a conta com `insert` em `workspaces` + `seed_workspace_defaults` |
 
 ## Arquivos que divergem do Hub de propósito (mesclar à mão ao sincronizar)
 
