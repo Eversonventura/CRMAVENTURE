@@ -526,34 +526,18 @@ begin
   values (p_ws, 'Comercial', 0)
   returning id into pid;
 
+  -- Funil padrão enxuto: o cliente adiciona mais etapas se quiser (aba Funil → Etapas).
   insert into public.crm_stages (workspace_id, pipeline_id, name, position, color, kind, role) values
-    (p_ws, pid, 'Novo lead',             0, '#64748B', 'open', 'lead'),
-    (p_ws, pid, 'Tentativa de contato',  1, '#F97316', 'open', 'tentativa'),
-    (p_ws, pid, 'Contato realizado',     2, '#EAB308', 'open', 'contato'),
-    (p_ws, pid, 'Stand-by',              3, '#38BDF8', 'open', 'standby'),
-    (p_ws, pid, 'Pré-briefing agendado', 4, '#84CC16', 'open', 'briefing'),
-    (p_ws, pid, 'Pré-briefing realizado',5, '#22C55E', 'open', 'briefing'),
-    (p_ws, pid, 'Diagnóstico agendado',  6, '#14B8A6', 'open', null),
-    (p_ws, pid, 'Diagnóstico realizado', 7, '#06B6D4', 'open', 'diagnostico_proposta'),
-    (p_ws, pid, 'Proposta apresentada',  8, '#3B82F6', 'open', 'diagnostico_proposta'),
-    (p_ws, pid, 'Negociação',            9, '#8B5CF6', 'open', 'negociacao'),
-    (p_ws, pid, 'Fechado',              10, '#16A34A', 'won',  null),
-    (p_ws, pid, 'Perdido',              11, '#EF4444', 'lost', null);
+    (p_ws, pid, 'Lead',              0, '#64748B', 'open', 'lead'),
+    (p_ws, pid, 'Contato realizado', 1, '#EAB308', 'open', 'contato'),
+    (p_ws, pid, 'Fechamento',        2, '#16A34A', 'won',  null),
+    (p_ws, pid, 'Perdido',           3, '#EF4444', 'lost', null);
 
-  -- tentativa 7d, contato 3d, stand-by 7d, pré-briefing 2d (meta 5/dia cada)
+  -- Follow-up a cada 3 dias enquanto o lead está em "Contato realizado" (meta de 5 por dia).
   insert into public.crm_followup_rules (workspace_id, stage_id, task_type, interval_days, repeat, daily_goal)
-  select p_ws, id, 'follow_up',
-         case role when 'tentativa' then 7 when 'standby' then 7 when 'contato' then 3 else 2 end,
-         true, 5
+  select p_ws, id, 'follow_up', 3, true, 5
     from public.crm_stages
-   where workspace_id = p_ws and role in ('tentativa', 'contato', 'standby', 'briefing');
-
-  insert into public.crm_followup_rules (workspace_id, stage_id, task_type, interval_days, repeat, daily_goal)
-  select p_ws, id, 'preparar_proposta', 2, false, null
-    from public.crm_stages
-   where workspace_id = p_ws and role = 'diagnostico_proposta'
-   order by position
-   limit 1;
+   where workspace_id = p_ws and role = 'contato';
 
   -- Valores iniciais: ajuste em CRM → Visão geral → Metas.
   insert into public.crm_goals (workspace_id, metric, owner_id, target, direction) values

@@ -374,7 +374,9 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   ];
   // Vendas e fechamentos primeiro; as métricas de atividade vêm depois.
   const SALES_FIRST = ["fechamentos", "receita_fechada", "ticket_medio", "taxa_conversao", "tempo_medio_fechar"];
-  cards.sort((a, b) => {
+  // Funil enxuto (sem etapa de proposta): o cartão "Propostas apresentadas" ficaria sempre zerado, então sai.
+  const visibleCards = cards.filter((c) => c.key !== "propostas_apresentadas" || proposalStageIds.size > 0);
+  visibleCards.sort((a, b) => {
     const ra = a.key && SALES_FIRST.includes(a.key) ? SALES_FIRST.indexOf(a.key) : 99;
     const rb = b.key && SALES_FIRST.includes(b.key) ? SALES_FIRST.indexOf(b.key) : 99;
     return ra - rb;
@@ -482,7 +484,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         @media (prefers-reduced-motion: reduce) { .goal-card * , .goal-card { animation: none !important } }
       `}</style>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {cards.map((c) => {
+        {visibleCards.map((c) => {
           const def = GOAL_METRICS.find((m) => m.key === c.key);
           const base = def ? (targets[def.key] ?? def.fallback) : null;
           const target = def && base !== null ? (def.scales ? base * factor : base) : null;
