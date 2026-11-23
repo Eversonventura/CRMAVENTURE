@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { BUSINESS_MODEL_LABELS, SEGMENTS, type BusinessModel } from "../business";
+import { GoalsForm } from "../GoalsForm";
+import type { SalesGoalMap } from "../sales-goals";
 import { saveDailyGoals } from "../diario/actions";
 import type { OlympicSettings } from "../olympic";
 import { saveBusinessProfile } from "./actions";
@@ -125,6 +127,9 @@ export function ConfigManager({
   weekly,
   olympic,
   followups,
+  kpiTargets,
+  members,
+  memberGoals,
 }: {
   model: BusinessModel;
   segment: string | null;
@@ -132,6 +137,9 @@ export function ConfigManager({
   weekly: number;
   olympic: OlympicSettings;
   followups: FollowupConfig;
+  kpiTargets: Record<string, number>;
+  members: { id: string; name: string }[];
+  memberGoals: SalesGoalMap;
 }) {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -162,6 +170,14 @@ export function ConfigManager({
         hint="Bronze, Prata, Ouro e RMV da Visão Geral: medidos por faturamento ou por contratos fechados."
       >
         <OlympicSettingsForm settings={olympic} />
+      </Section>
+
+      <Section
+        id="metas"
+        title="Metas do mês"
+        hint="Metas da equipe e de cada vendedor que aparecem na Visão Geral (fechamentos, receita, conversão, ticket médio e outras)."
+      >
+        <GoalsForm targets={kpiTargets} members={members} memberGoals={memberGoals} />
       </Section>
 
       <Section

@@ -4,7 +4,6 @@ import { getAccessContext } from "@/lib/access";
 import { getCrmAccessContext } from "../lib";
 import { brtToday } from "../diario/dates";
 import { classifyGoal, GOAL_METRICS, GOAL_TONE_CLASSES } from "../goals";
-import { GoalsEditor } from "../GoalsEditor";
 import type { SalesGoalMap } from "../sales-goals";
 import { OlympicCard } from "./OlympicCard";
 import { activeOlympicTargets, olympicMode, readOlympicSettings } from "../olympic";
@@ -143,7 +142,7 @@ function SalesPanel({
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-[11px] text-muted">Metas pessoais definidas em Metas → Metas de vendas por vendedor.</p>
+      <p className="mt-2 text-[11px] text-muted">Metas pessoais definidas em Configurações → Metas do mês.</p>
     </section>
   );
 }
@@ -459,13 +458,6 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
             </Link>
           ))}
         </div>
-        {access.isFullAdmin && (
-          <GoalsEditor
-            targets={targets}
-            members={((membersRes.data as { id: string; full_name: string }[] | null) ?? []).map((m) => ({ id: m.id, name: m.full_name }))}
-            memberGoals={memberGoals}
-          />
-        )}
       </div>
 
       <SalesPanel
