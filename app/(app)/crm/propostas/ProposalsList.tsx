@@ -11,7 +11,7 @@ function formatDate(value: string | null) {
 }
 
 // Histórico das propostas cadastradas à mão antes da sincronização com o
-// funil — só leitura (os PDFs continuam acessíveis).
+// fluxo — só leitura (os PDFs continuam acessíveis).
 export function ProposalsList({ proposals }: { proposals: CrmProposal[] }) {
   return (
     <div>

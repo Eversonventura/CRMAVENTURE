@@ -5,7 +5,7 @@ import { ValueCell } from "./ValueCell";
 import { DefinePaymentButton } from "./DefinePaymentButton";
 import type { CrmProposal, TeamMemberOption } from "../types";
 
-// Propostas = visão das oportunidades do funil (nada é cadastrado aqui):
+// Propostas = visão das oportunidades do fluxo (nada é cadastrado aqui):
 //   Em negociação → abertas nas etapas de diagnóstico/proposta e negociação
 //   Fechadas / Perdidas → pelo closed_at / lost_at, dentro do período.
 

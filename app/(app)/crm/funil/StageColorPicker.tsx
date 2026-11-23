@@ -6,7 +6,7 @@ import { STAGE_COLOR_PRESETS } from "../types";
 
 // Bolinha de cor + paleta ampliada + qualquer cor (seletor nativo). Mesmo
 // padrão visual das colunas do Kanban; usado no cabeçalho de cada etapa do
-// funil e no gerenciador de etapas.
+// fluxo e no gerenciador de etapas.
 export function StageColorPicker({
   stageId,
   color,
@@ -25,7 +25,7 @@ export function StageColorPicker({
   }
 
   return (
-    <div className="relative" data-funil-draggable>
+    <div className="relative" data-fluxo-draggable>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

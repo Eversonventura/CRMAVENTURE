@@ -40,7 +40,7 @@ export function CompleteTaskModal({
   const [error, setError] = useState<string | null>(null);
   const [nextStage, setNextStage] = useState<{ id: string; name: string } | null>(null);
 
-  // Próxima etapa do funil (se houver) pro botão "Respondeu → próxima etapa".
+  // Próxima etapa do fluxo (se houver) pro botão "Respondeu → próxima etapa".
   useEffect(() => {
     let active = true;
     getNextStage(task.opportunity_id).then((stage) => {

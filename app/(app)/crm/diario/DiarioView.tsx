@@ -425,7 +425,7 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
   const [openedCard, setOpenedCard] = useState<{ opportunity: FunilOpportunityRow; stages: CrmStage[] } | null>(null);
   const [loadingCard, setLoadingCard] = useState(false);
 
-  // Abre o mesmo card do Funil (editar telefone, e-mail, nome, etc.).
+  // Abre o mesmo card do Fluxo (editar telefone, e-mail, nome, etc.).
   async function openCard(opportunityId: string) {
     setLoadingCard(true);
     setError(null);
@@ -458,7 +458,7 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-medium capitalize text-ink">{todayLabel}</h1>
-          <p className="text-xs text-muted">Seu plano de execução do dia, direto das regras do funil.</p>
+          <p className="text-xs text-muted">Seu plano de execução do dia, direto das regras do fluxo.</p>
         </div>
         <div className="flex items-center gap-2">
           {data.people.length > 1 && (
@@ -662,7 +662,7 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
       {(data.weekend || data.offToday) && (
         <section className={card}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle hint="Meta semanal de leads novos e estoque pra semana que vem.">Abastecer o funil</SectionTitle>
+            <SectionTitle hint="Meta semanal de leads novos e estoque pra semana que vem.">Abastecer o fluxo</SectionTitle>
             <Progress done={data.supply.added} goal={data.supply.weeklyGoal} />
           </div>
           <p className="text-sm text-ink">

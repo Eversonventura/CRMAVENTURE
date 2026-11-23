@@ -21,7 +21,7 @@ const MEETING_TYPES = ["agendar_reuniao", "realizar_reuniao"];
 
 export function AgendaView({ allTasks }: { allTasks: AgendaTask[] }) {
   // Padrão: só reuniões (a agenda de verdade). "Todas" inclui os follow-ups e
-  // demais tarefas do funil, em cor mais discreta.
+  // demais tarefas do fluxo, em cor mais discreta.
   const [showAll, setShowAll] = useState(false);
   const tasks = showAll ? allTasks : allTasks.filter((t) => MEETING_TYPES.includes(t.type));
   const [cursor, setCursor] = useState(() => new Date());

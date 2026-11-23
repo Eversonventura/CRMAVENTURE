@@ -213,7 +213,7 @@ export function OlympicCard({
           )}
         </div>
       </details>
-      {isCurrentMonth && <p className="mt-2 text-[11px] text-muted">Mês em andamento — o valor sobe a cada venda fechada no funil.</p>}
+      {isCurrentMonth && <p className="mt-2 text-[11px] text-muted">Mês em andamento — o valor sobe a cada venda fechada no fluxo.</p>}
     </div>
   );
 }

@@ -318,7 +318,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   const history = (historyRes.data as { opportunity_id: string; to_stage_id: string | null; changed_at: string }[] | null) ?? [];
 
   // Propostas apresentadas = oportunidades que entraram numa etapa de
-  // diagnóstico/proposta no período (única fonte: o funil).
+  // diagnóstico/proposta no período (única fonte: o fluxo).
   const proposalStageIds = new Set(stages.filter((s) => s.role === "diagnostico_proposta").map((s) => s.id));
   const proposalsPresented = new Set(history.filter((h) => h.to_stage_id && proposalStageIds.has(h.to_stage_id)).map((h) => h.opportunity_id)).size;
 
@@ -374,7 +374,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   ];
   // Vendas e fechamentos primeiro; as métricas de atividade vêm depois.
   const SALES_FIRST = ["fechamentos", "receita_fechada", "ticket_medio", "taxa_conversao", "tempo_medio_fechar"];
-  // Funil enxuto (sem etapa de proposta): o cartão "Propostas apresentadas" ficaria sempre zerado, então sai.
+  // Fluxo enxuto (sem etapa de proposta): o cartão "Propostas apresentadas" ficaria sempre zerado, então sai.
   const visibleCards = cards.filter((c) => c.key !== "propostas_apresentadas" || proposalStageIds.size > 0);
   visibleCards.sort((a, b) => {
     const ra = a.key && SALES_FIRST.includes(a.key) ? SALES_FIRST.indexOf(a.key) : 99;
@@ -382,7 +382,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     return ra - rb;
   });
 
-  // Funil atual por etapa (aberto), por pipeline.
+  // Fluxo atual por etapa (aberto), por pipeline.
   const funnelCount = new Map<string, { count: number; value: number }>();
   for (const o of open) {
     const cur = funnelCount.get(o.stage_id) ?? { count: 0, value: 0 };
@@ -544,7 +544,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <BarBlock
-          title="Funil por etapa (aberto agora)"
+          title="Fluxo por etapa (aberto agora)"
           hint="Quantidade de oportunidades abertas em cada etapa (o valor aparece ao passar o mouse)."
           empty="Nenhuma oportunidade aberta."
           data={pipelines.flatMap((p) =>

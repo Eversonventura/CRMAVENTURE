@@ -15,7 +15,7 @@ import { TASK_TYPE_LABELS, type TaskType } from "./types";
 
 export type CrmFormState = { error?: string };
 
-// Uma mudança de etapa/oportunidade mexe em funil, tarefas, Diário,
+// Uma mudança de etapa/oportunidade mexe em fluxo, tarefas, Diário,
 // propostas, contatos e visão geral — revalida tudo junto pra as telas não
 // ficarem dessincronizadas.
 function revalidateCrmViews() {
@@ -318,7 +318,7 @@ export async function moveOpportunityStage(id: string, stageId: string) {
   // numa coluna que não bate com o banco, sem erro nenhum aparecer.
   if (moveError) return { error: moveError.message };
 
-  // Voltou para uma etapa em andamento: se estava fechada ou perdida (o Funil
+  // Voltou para uma etapa em andamento: se estava fechada ou perdida (o Fluxo
   // mostra essas por 3 meses), a oportunidade reabre. O gatilho do banco zera
   // closed_at/lost_at.
   if (toStage?.kind === "open") {
@@ -385,11 +385,11 @@ export async function moveOpportunityStage(id: string, stageId: string) {
 }
 
 // Atalho pra registrar "tentei contatar esse lead" direto da tela de
-// Contatos/Empresas, sem precisar abrir o Funil e achar o card. Se a
+// Contatos/Empresas, sem precisar abrir o Fluxo e achar o card. Se a
 // oportunidade ainda está em "Novo lead", avança ela pra "Tentativa de
-// contato" (mesmo efeito de arrastar o card no Funil); se já passou
+// contato" (mesmo efeito de arrastar o card no Fluxo); se já passou
 // dessa etapa, só registra mais uma tentativa na linha do tempo sem
-// mexer na etapa atual (não faz sentido "voltar" o funil).
+// mexer na etapa atual (não faz sentido "voltar" o fluxo).
 export async function registerContactAttempt(opportunityId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
 
@@ -547,7 +547,7 @@ export async function getNextStage(opportunityId: string): Promise<{ id: string;
     .eq("pipeline_id", current.pipeline_id)
     .eq("kind", "open")
     // Stand-by é um desvio de aquecimento (o lead sem interesse agora), não o
-    // próximo passo do funil: "Respondeu → próxima etapa" pula essa etapa.
+    // próximo passo do fluxo: "Respondeu → próxima etapa" pula essa etapa.
     .or("role.is.null,role.neq.standby")
     .gt("position", current.position)
     .order("position")
@@ -703,7 +703,7 @@ export async function startCadenceAction(opportunityId: string, cadenceType: Cad
   revalidatePath("/crm/funil");
 }
 
-// --- Propostas: visão sincronizada com o funil (sprint 183) ---
+// --- Propostas: visão sincronizada com o fluxo (sprint 183) ---
 // Não há mais cadastro manual: valor/cliente/etapa vêm da própria oportunidade.
 export async function updateProposalValue(opportunityId: string, value: number | null): Promise<{ error?: string }> {
   if (value !== null && (!Number.isFinite(value) || value < 0)) return { error: "Valor inválido." };

@@ -13,7 +13,7 @@ export default function LoginPage() {
           <GrowthLine />
         </div>
         <p className="relative max-w-sm font-display text-2xl leading-snug text-ink">
-          Prospecção, funil e metas em <span className="text-brand">um só lugar.</span>
+          Prospecção, fluxo e metas em <span className="text-brand">um só lugar.</span>
         </p>
       </div>
 

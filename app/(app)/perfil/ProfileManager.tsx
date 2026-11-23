@@ -220,7 +220,7 @@ export function ProfileManager({
       <section className="rounded-xl border border-border bg-surface p-5">
         <h2 className="font-display text-base font-medium text-ink">Minhas contas (empresas)</h2>
         <p className="mt-1 text-xs text-muted">
-          Cada conta tem os próprios leads, funil e metas. Você pode participar de várias e alternar entre elas.
+          Cada conta tem os próprios leads, fluxo e metas. Você pode participar de várias e alternar entre elas.
         </p>
         <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-white">
           {workspaces.map((w) => {

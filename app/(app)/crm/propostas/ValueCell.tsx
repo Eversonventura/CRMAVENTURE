@@ -9,7 +9,7 @@ function formatCurrency(value: number | null) {
 }
 
 // Valor da proposta = estimated_value da oportunidade (uma fonte só, igual
-// no funil). Editar aqui atualiza o card do funil e a Visão geral.
+// no fluxo). Editar aqui atualiza o card do fluxo e a Visão geral.
 export function ValueCell({ opportunityId, value }: { opportunityId: string; value: number | null }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value === null ? "" : String(value));

@@ -30,7 +30,7 @@ type NavItem = { href: string; label: string; Icon: LucideIcon; adminOnly?: bool
 const NAV_ITEMS: NavItem[] = [
   { href: "/crm/diario", label: "Diário", Icon: CalendarCheck },
   { href: "/crm/visao-geral", label: "Visão Geral", Icon: LayoutDashboard },
-  { href: "/crm/funil", label: "Funil", Icon: Kanban },
+  { href: "/crm/funil", label: "Fluxo", Icon: Kanban },
   { href: "/crm/tarefas", label: "Tarefas", Icon: ListChecks },
   { href: "/crm/contatos", label: "Contatos & Empresas", Icon: Users },
   { href: "/crm/agenda", label: "Agenda", Icon: CalendarDays },

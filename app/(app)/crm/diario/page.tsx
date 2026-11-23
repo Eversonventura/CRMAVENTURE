@@ -407,7 +407,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     };
   }
 
-  // Abastecer o funil: meta semanal de leads novos, estoque de leads sem
+  // Abastecer o fluxo: meta semanal de leads novos, estoque de leads sem
   // abordagem e quanto falta pra semana que vem.
   const workdaysThisWeek = week.weekdays.filter((d) => !offSet.has(d)).length;
   const nextWeekdays = week.weekdays.map((d) => addDays(d, 7));
@@ -428,7 +428,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     shortage: Math.max(0, approachGoal * nextWeekWorkdays - stock),
   };
 
-  // Etapas abertas do funil, pra escolher o destino ao registrar uma abordagem.
+  // Etapas abertas do fluxo, pra escolher o destino ao registrar uma abordagem.
   const stageRowsAll = stageRowsRes.data;
   const firstPipelineId = (stageRowsAll as { pipeline_id: string }[] | null)?.[0]?.pipeline_id;
   const stageOptions = ((stageRowsAll as { id: string; name: string; pipeline_id: string }[] | null) ?? [])

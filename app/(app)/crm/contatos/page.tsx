@@ -18,7 +18,7 @@ export default async function CrmContatosPage() {
     if (!nextTaskByOpp.has(t.opportunity_id)) nextTaskByOpp.set(t.opportunity_id, { type: t.type, dueAt: t.due_at });
   }
 
-  // Para "+ Adicionar" abrir o mesmo formulário do Funil: etapas do funil padrão e a equipe.
+  // Para "+ Adicionar" abrir o mesmo formulário do Fluxo: etapas do fluxo padrão e a equipe.
   const defaultPipelineId = await getDefaultPipelineId(supabase);
   const [{ data: stageRows }, { data: teamMembers }] = await Promise.all([
     supabase
@@ -87,7 +87,7 @@ export default async function CrmContatosPage() {
       bioLink: c.bio_link,
       opportunityCount: c.crm_opportunities?.length ?? 0,
       openOpportunityId: openOpportunities.length === 1 ? openOpportunities[0].id : null,
-      // Oportunidade que o "Editar" abre (a aberta, ou a mais recente): mesmo formulário do Funil.
+      // Oportunidade que o "Editar" abre (a aberta, ou a mais recente): mesmo formulário do Fluxo.
       editOpportunityId: (openOpportunities[0] ?? (c.crm_opportunities ?? [])[0])?.id ?? null,
       openOpportunityCount: openOpportunities.length,
       primaryContact: c.crm_contacts?.[0] ?? null,

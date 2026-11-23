@@ -99,7 +99,7 @@ export async function saveDailyGoals(
   return {};
 }
 
-// Abre o mesmo card do Funil dentro do Diário: carrega só a oportunidade
+// Abre o mesmo card do Fluxo dentro do Diário: carrega só a oportunidade
 // clicada (e as etapas do pipeline dela) sob demanda, sem pesar a página.
 export async function getOpportunityForModal(
   opportunityId: string
@@ -326,7 +326,7 @@ export async function registerApproach(input: ApproachInput): Promise<Result> {
         const role = input.result === "respondeu" ? "contato" : "standby";
         targetId = (await findPipelineStage(supabase, pipelineId, { role }))?.id ?? null;
       }
-      if (!targetId) return { error: input.result === "outra" ? "Escolha a etapa." : "Etapa de destino não encontrada no funil." };
+      if (!targetId) return { error: input.result === "outra" ? "Escolha a etapa." : "Etapa de destino não encontrada no fluxo." };
       if (targetId !== opp.stage_id) {
         const moved = await moveOpportunityStage(opp.id, targetId);
         if (moved?.error) return moved;

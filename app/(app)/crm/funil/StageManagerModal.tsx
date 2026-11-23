@@ -68,9 +68,9 @@ export function StageManagerModal({
   return (
     <ModalBackdrop dirty={false} onClose={onClose}>
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-xl">
-        <h2 className="font-display text-xl font-medium text-ink">Etapas do funil</h2>
+        <h2 className="font-display text-xl font-medium text-ink">Etapas do fluxo</h2>
         <p className="mt-1 text-xs text-muted">
-          O <strong>nome</strong> é a coluna do funil, e você pode renomear à vontade. O <strong>papel</strong> diz ao sistema
+          O <strong>nome</strong> é a coluna do fluxo, e você pode renomear à vontade. O <strong>papel</strong> diz ao sistema
           em que fase do processo a etapa está (Diário, follow-ups e automações usam isso, não o nome). A
           <strong> situação</strong> diz se a etapa é acompanhada, fechada ou perdida. Mudanças salvam na hora.
         </p>

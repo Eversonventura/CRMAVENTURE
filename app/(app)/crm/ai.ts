@@ -9,7 +9,7 @@ export type MessageSuggestion = {
   message: string;
 };
 
-const SYSTEM_PROMPT = `Você é um assistente de vendas B2B. Sua função é sugerir mensagens de WhatsApp para o vendedor continuar a conversa com um lead do funil comercial, com base no estágio em que ele está e no histórico já registrado no CRM.
+const SYSTEM_PROMPT = `Você é um assistente de vendas B2B. Sua função é sugerir mensagens de WhatsApp para o vendedor continuar a conversa com um lead do fluxo comercial, com base no estágio em que ele está e no histórico já registrado no CRM.
 
 Regras:
 - Escreva em português do Brasil, tom direto e consultivo, sem "corporativês" nem enrolação. Como se fosse o próprio vendedor escrevendo, não um robô se apresentando.
@@ -25,7 +25,7 @@ function buildContext(opportunity: any, activities: any[]): string {
   const stageName = opportunity.crm_stages?.name ?? "—";
 
   const lines: string[] = [];
-  lines.push(`Estágio atual no funil: ${stageName}`);
+  lines.push(`Estágio atual no fluxo: ${stageName}`);
   if (opportunity.temperature) lines.push(`Temperatura: ${opportunity.temperature}`);
   if (opportunity.status === "perdida") {
     lines.push(`Oportunidade PERDIDA. Motivo: ${opportunity.loss_reason ?? "não informado"}`);

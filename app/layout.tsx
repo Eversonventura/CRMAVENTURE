@@ -25,7 +25,7 @@ const body = localFont({
 
 export const metadata: Metadata = {
   title: "CRM Aventure",
-  description: "CRM de prospecção, funil e metas",
+  description: "CRM de prospecção, fluxo e metas",
   // Ícone real (símbolo "a!") ao adicionar à tela inicial — sem isso,
   // iOS/Android usam um print da tela como ícone do "app".
   icons: {

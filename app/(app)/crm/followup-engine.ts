@@ -53,7 +53,7 @@ async function scheduleTask(
 }
 
 // Chamado por todo caminho que muda a etapa de uma oportunidade (mover no
-// funil, editar, criar, marcar perdida, registrar tentativa). Mover o card
+// fluxo, editar, criar, marcar perdida, registrar tentativa). Mover o card
 // continua manual; o agendamento da tarefa da etapa é que é automático.
 export async function syncOpportunityTasks(
   supabase: Supabase,

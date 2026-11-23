@@ -102,8 +102,8 @@ export function ContatosEmpresasList({
     setTimeout(() => setAttemptDoneId((prev) => (prev === c.id ? null : prev)), 2500);
   }
 
-  // "Editar" abre o MESMO card do Funil (dados do contato, comerciais e origem), para o
-  // cadastro por aqui e pelo Funil ser igual. Sem oportunidade, cai no formulário simples.
+  // "Editar" abre o MESMO card do Fluxo (dados do contato, comerciais e origem), para o
+  // cadastro por aqui e pelo Fluxo ser igual. Sem oportunidade, cai no formulário simples.
   async function handleEdit(c: CompanyRow) {
     if (!c.editOpportunityId) {
       setEditingCompany(c);
@@ -415,7 +415,7 @@ export function ContatosEmpresasList({
                       <button
                         onClick={() => handleContactAttempt(c)}
                         disabled={attemptPendingId === c.id}
-                        title="Registra a tentativa de contato no Funil sem precisar abrir o card"
+                        title="Registra a tentativa de contato no Fluxo sem precisar abrir o card"
                         className="text-xs text-muted transition hover:text-brand disabled:opacity-50"
                       >
                         {attemptPendingId === c.id ? "Registrando..." : attemptDoneId === c.id ? "✓ Registrado" : "Tentativa de contato"}
@@ -423,12 +423,12 @@ export function ContatosEmpresasList({
                     ) : c.openOpportunityCount > 1 ? (
                       <span
                         className="text-xs text-muted"
-                        title="Mais de uma oportunidade aberta pra essa empresa — acesse o Funil pra escolher qual"
+                        title="Mais de uma oportunidade aberta pra essa empresa — acesse o Fluxo pra escolher qual"
                       >
                         Tentativa de contato
                       </span>
                     ) : (
-                      <span className="text-xs text-muted opacity-50" title="Sem oportunidade aberta no Funil pra essa empresa">
+                      <span className="text-xs text-muted opacity-50" title="Sem oportunidade aberta no Fluxo pra essa empresa">
                         Tentativa de contato
                       </span>
                     )}

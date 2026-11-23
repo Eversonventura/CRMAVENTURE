@@ -30,8 +30,8 @@ export type CompanyEditData = {
   } | null;
 };
 
-// Edição simples de um contato que ainda NÃO tem oportunidade no funil. Contatos com
-// oportunidade (e o cadastro de novos) usam o mesmo formulário do Funil
+// Edição simples de um contato que ainda NÃO tem oportunidade no fluxo. Contatos com
+// oportunidade (e o cadastro de novos) usam o mesmo formulário do Fluxo
 // (funil/OpportunityModal.tsx), para o dado ser o mesmo nas duas telas.
 export function CompanyContactModal({ company, onClose }: { company: CompanyEditData; onClose: () => void }) {
   const settings = useCrmSettings();

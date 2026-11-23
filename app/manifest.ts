@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "CRM Aventure",
     short_name: "CRM",
-    description: "CRM de prospecção, funil e metas",
+    description: "CRM de prospecção, fluxo e metas",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

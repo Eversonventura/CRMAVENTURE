@@ -1,6 +1,6 @@
 # CRM Aventure
 
-CRM de prospecção, funil, tarefas, Diário de abordagens, metas e propostas —
+CRM de prospecção, fluxo, tarefas, Diário de abordagens, metas e propostas —
 cópia independente do módulo CRM do Aventure Hub. **Não depende do Hub**: tem
 banco, login e deploy próprios.
 
@@ -9,7 +9,7 @@ planos gratuitos.
 
 ## Como funcionam as contas
 
-- Quem se cadastra ganha uma **conta própria** (funil, regras de follow-up e metas já prontos).
+- Quem se cadastra ganha uma **conta própria** (fluxo, regras de follow-up e metas já prontos).
 - O dono **compartilha a conta** em *Compartilhar conta*, convidando por e-mail com um papel:
   - **Administrador**: tudo, inclusive etapas, metas, regras, recebimentos e convites.
   - **Gestor**: vê toda a carteira.

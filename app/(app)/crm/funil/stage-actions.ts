@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
 import type { StageKind, StageRole } from "../types";
 
-// Edição da estrutura do funil (etapas e pipelines). A RLS de crm_stages e
+// Edição da estrutura do fluxo (etapas e pipelines). A RLS de crm_stages e
 // crm_pipelines só deixa full admin escrever — aqui a checagem é pra dar
 // uma mensagem clara em vez de um update que "não pega" em silêncio (RLS
 // em update devolve 0 linhas, não erro).
@@ -64,7 +64,7 @@ async function countOpportunitiesInStages(
 }
 
 // Nova etapa entra antes da primeira etapa de ganho/perda — "Fechado" e
-// "Perdido" continuam sempre no fim do funil.
+// "Perdido" continuam sempre no fim do fluxo.
 export async function createStage(pipelineId: string, name: string): Promise<Result> {
   const denied = await requireFullAdmin();
   if (denied) return { error: denied };
@@ -158,7 +158,7 @@ export async function reorderStages(pipelineId: string, orderedIds: string[]): P
 
 // Excluir etapa exige destino: os cards dela vão pro destino (que precisa
 // ser do mesmo tipo — aberta pra aberta, ganha pra ganha, perdida pra
-// perdida). O histórico fica (FK ON DELETE SET NULL). Nunca deixa o funil
+// perdida). O histórico fica (FK ON DELETE SET NULL). Nunca deixa o fluxo
 // sem etapa de entrada, de ganho ou de perda.
 export async function deleteStage(stageId: string, destinationStageId: string): Promise<Result> {
   const denied = await requireFullAdmin();
@@ -180,7 +180,7 @@ export async function deleteStage(stageId: string, destinationStageId: string): 
     return { error: "O destino precisa ser do mesmo tipo da etapa excluída (em andamento, ganho ou perdido)." };
   }
   if (stage.role === "lead" && !stages.some((s) => s.id !== stageId && s.role === "lead")) {
-    return { error: 'Esse funil precisa de uma etapa "Novo lead" (papel de entrada). Dê esse papel a outra etapa antes.' };
+    return { error: 'Esse fluxo precisa de uma etapa "Novo lead" (papel de entrada). Dê esse papel a outra etapa antes.' };
   }
 
   const { error: moveError } = await supabase

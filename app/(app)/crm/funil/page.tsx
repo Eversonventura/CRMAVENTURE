@@ -15,7 +15,7 @@ export default async function CrmFunilPage({
   await getCrmAccessContext();
   const access = await getAccessContext();
 
-  // Fechadas e perdidas ficam visíveis no Funil por 3 meses (contados da data
+  // Fechadas e perdidas ficam visíveis no Fluxo por 3 meses (contados da data
   // de fechamento/perda); depois saem da tela, mas continuam no banco.
   const keepSince = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 

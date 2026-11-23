@@ -74,7 +74,7 @@ export function OlympicSettingsForm({ settings }: { settings: OlympicSettings })
       {byContracts ? (
         <>
           <p className="mt-4 text-xs text-muted">
-            Quantos contratos fechados no mês para cada medalha (fechamentos do funil e vendas avulsas; comissão não conta como contrato).
+            Quantos contratos fechados no mês para cada medalha (fechamentos do fluxo e vendas avulsas; comissão não conta como contrato).
           </p>
           <div className="mt-3 max-w-md space-y-2.5 text-sm">
             {row("olympic_count_bronze", "Bronze", "contratos", 1)}

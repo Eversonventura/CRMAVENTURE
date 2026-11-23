@@ -134,7 +134,7 @@ function OpportunityCard({
       {...attributes}
       {...listeners}
       onClick={onClick}
-      data-funil-draggable
+      data-fluxo-draggable
       className={`cursor-pointer rounded-lg border border-l-4 border-border bg-white p-3 shadow-sm transition hover:border-brand ${cardBorderColor(
         opp
       )} ${isDragging ? "opacity-40" : ""}`}
@@ -275,7 +275,7 @@ export function FunilBoard({
   function handleBoardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest("[data-funil-draggable], button, a, input, textarea, select")) return;
+    if (target.closest("[data-fluxo-draggable], button, a, input, textarea, select")) return;
     const el = boardScrollRef.current;
     if (!el) return;
     panState.current = { startX: e.clientX, scrollLeft: el.scrollLeft };
@@ -442,7 +442,7 @@ export function FunilBoard({
           opportunity={lostTarget}
           onClose={() => setLostTarget(null)}
           onDone={() => {
-            // Fica visível na coluna Perdido (o Funil mostra perdidas por 3 meses).
+            // Fica visível na coluna Perdido (o Fluxo mostra perdidas por 3 meses).
             setItems((prev) =>
               lostStage
                 ? prev.map((o) => (o.id === lostTarget.id ? { ...o, stageId: lostStage.id, status: "perdida" } : o))

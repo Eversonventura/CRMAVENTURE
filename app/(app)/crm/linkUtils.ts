@@ -1,6 +1,6 @@
 // Compartilhado entre telas do CRM que mostram WhatsApp/Instagram como
 // link clicável (Contatos e, agora, o pop-up de oportunidade do
-// Funil) — funções puras, sem dependência de servidor, pra poder ser
+// Fluxo) — funções puras, sem dependência de servidor, pra poder ser
 // importado de componente client também.
 
 // wa.me só aceita dígitos — limpa qualquer formatação (parênteses,
