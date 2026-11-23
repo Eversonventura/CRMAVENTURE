@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ModalBackdrop } from "@/components/ModalBackdrop";
-import { applyRuleToExistingCards, deleteFollowupRule, saveFollowupRule } from "./followup-actions";
+import { applyRuleToExistingCards, deleteFollowupRule, saveFollowupRule } from "../tarefas/followup-actions";
 import { TASK_TYPE_LABELS, type TaskType } from "../types";
 import type { FollowupRule } from "../followup-plan";
 
@@ -157,46 +156,21 @@ function StageRuleRow({ stage, rule }: { stage: FollowupConfig["stages"][number]
   );
 }
 
-export function FollowupRulesModal({ config, onClose }: { config: FollowupConfig; onClose: () => void }) {
+export function FollowupRulesSection({ config }: { config: FollowupConfig }) {
   return (
-    <ModalBackdrop dirty={false} onClose={onClose}>
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-xl">
-        <h2 className="font-display text-xl font-medium text-ink">Configurar follow-ups</h2>
-        <p className="mt-1 text-xs text-muted">
-          Quando um card entra numa etapa, a tarefa da regra é agendada sozinha; ao sair da etapa, a tarefa
-          automática pendente dela é cancelada (as tarefas que você criou à mão nunca são mexidas). Mover o card
-          continua manual.
-        </p>
-        <div className="mt-4 space-y-5">
-          {config.pipelines.map((pipeline) => (
-            <div key={pipeline.id}>
-              {config.pipelines.length > 1 && (
-                <h3 className="mb-2 text-sm font-semibold text-ink">{pipeline.name}</h3>
-              )}
-              <div className="space-y-2">
-                {config.stages
-                  .filter((s) => s.pipeline_id === pipeline.id && s.kind === "open")
-                  .map((stage) => (
-                    <StageRuleRow
-                      key={stage.id}
-                      stage={stage}
-                      rule={config.rules.find((r) => r.stage_id === stage.id)}
-                    />
-                  ))}
-              </div>
-            </div>
-          ))}
+    <div className="space-y-5">
+      {config.pipelines.map((pipeline) => (
+        <div key={pipeline.id}>
+          {config.pipelines.length > 1 && <h3 className="mb-2 text-sm font-semibold text-ink">{pipeline.name}</h3>}
+          <div className="space-y-2">
+            {config.stages
+              .filter((s) => s.pipeline_id === pipeline.id && s.kind === "open")
+              .map((stage) => (
+                <StageRuleRow key={stage.id} stage={stage} rule={config.rules.find((r) => r.stage_id === stage.id)} />
+              ))}
+          </div>
         </div>
-        <div className="mt-5 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-sm text-ink hover:border-brand"
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-    </ModalBackdrop>
+      ))}
+    </div>
   );
 }

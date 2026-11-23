@@ -1,31 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import { GOAL_METRICS } from "./goals";
-import { saveCrmGoals, saveMemberSalesGoals, saveOlympicGoals } from "./goal-actions";
+import { saveCrmGoals, saveMemberSalesGoals } from "./goal-actions";
 import type { SalesGoalMap } from "./sales-goals";
-import { OLYMPIC_DEFAULTS, olympicTargets, type OlympicSettings } from "./olympic";
 
 const UNIT_SUFFIX = { count: "", money: "R$", percent: "%", days: "dias" } as const;
 
 export function GoalsEditor({
   targets,
-  olympic,
   members = [],
   memberGoals = {},
 }: {
   targets: Record<string, number>;
-  olympic: OlympicSettings;
   members?: { id: string; name: string }[];
   memberGoals?: SalesGoalMap;
 }) {
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(GOAL_METRICS.map((m) => [m.key, String(targets[m.key] ?? m.fallback)]))
-  );
-  const [olympicValues, setOlympicValues] = useState<Record<string, string>>(
-    Object.fromEntries(Object.entries({ ...OLYMPIC_DEFAULTS, ...olympic }).map(([k, v]) => [k, String(v)]))
   );
   // Metas de vendas por vendedor: campo vazio = sem meta pessoal.
   const [personal, setPersonal] = useState<Record<string, { fechamentos: string; receita: string }>>(
@@ -42,21 +37,13 @@ export function GoalsEditor({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const preview = olympicTargets(
-    Object.fromEntries(Object.entries(olympicValues).map(([k, v]) => [k, Number(v) || 0])) as unknown as OlympicSettings
-  );
-  const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
   async function save() {
     setBusy(true);
     setError(null);
     const result = await saveCrmGoals(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v)])));
-    const olympicResult = result.error
-      ? result
-      : await saveOlympicGoals(Object.fromEntries(Object.entries(olympicValues).map(([k, v]) => [k, Number(v) || 0])));
     const personalResult =
-      olympicResult.error || members.length === 0
-        ? olympicResult
+      result.error || members.length === 0
+        ? result
         : await saveMemberSalesGoals(
             members.map((m) => ({
               memberId: m.id,
@@ -141,103 +128,13 @@ export function GoalsEditor({
                 </div>
               </div>
             )}
-            <div className="mt-6 border-t border-border pt-4">
-              <h3 className="font-display text-base font-medium text-ink">Metas olímpicas e RMV</h3>
-              <p className="mt-1 text-xs text-muted">
-                A meta olímpica conta as <strong>vendas fechadas no mês</strong>. Escolha como medir:
-              </p>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                {(
-                  [
-                    ["0", "Por valor vendido", "soma, em R$, das vendas fechadas"],
-                    ["1", "Por contratos fechados", "quantidade de contratos fechados"],
-                  ] as const
-                ).map(([val, label, hint]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setOlympicValues({ ...olympicValues, olympic_mode: val })}
-                    className={`rounded-lg border px-3 py-2 text-left transition ${
-                      olympicValues.olympic_mode === val ? "border-brand bg-brand-soft text-brand" : "border-border text-ink hover:border-brand"
-                    }`}
-                  >
-                    <span className="block font-medium">{label}</span>
-                    <span className="text-xs text-muted">{hint}</span>
-                  </button>
-                ))}
-              </div>
-
-              {olympicValues.olympic_mode === "1" ? (
-                <>
-                  <p className="mt-3 text-xs text-muted">
-                    Quantos contratos fechados no mês para cada medalha (fechamentos do funil e vendas avulsas; comissão não conta como contrato).
-                  </p>
-                  <div className="mt-3 space-y-2.5 text-sm">
-                    {(
-                      [
-                        ["olympic_count_bronze", "Bronze"],
-                        ["olympic_count_silver", "Prata"],
-                        ["olympic_count_gold", "Ouro"],
-                        ["olympic_count_rmv", "RMV"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label key={key} className="flex items-center justify-between gap-3">
-                        <span className="text-ink">{label}</span>
-                        <span className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={olympicValues[key]}
-                            onChange={(e) => setOlympicValues({ ...olympicValues, [key]: e.target.value })}
-                            className="w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
-                          />
-                          <span className="w-16 text-xs text-muted">contratos</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="mt-3 text-xs text-muted">
-                    Base corrigida = ponto de partida × (1 + inflação). Bronze/Prata/Ouro = base × (1 + crescimento). RMV = multiplicador × Ouro
-                    (ou um valor fixo).
-                  </p>
-                  <div className="mt-3 space-y-2.5 text-sm">
-                    {(
-                      [
-                        ["olympic_base", "Ponto de partida mensal", "R$"],
-                        ["olympic_inflation", "Inflação projetada", "%"],
-                        ["olympic_bronze", "Bronze — crescimento", "%"],
-                        ["olympic_silver", "Prata — crescimento", "%"],
-                        ["olympic_gold", "Ouro — crescimento", "%"],
-                        ["rmv_multiplier", "RMV = Ouro ×", "×"],
-                        ["rmv_manual", "RMV fixo (0 = usar a fórmula)", "R$"],
-                      ] as const
-                    ).map(([key, label, suffix]) => (
-                      <label key={key} className="flex items-center justify-between gap-3">
-                        <span className="text-ink">{label}</span>
-                        <span className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            min={0}
-                            step="any"
-                            value={olympicValues[key]}
-                            onChange={(e) => setOlympicValues({ ...olympicValues, [key]: e.target.value })}
-                            className="w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
-                          />
-                          <span className="w-6 text-xs text-muted">{suffix}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="mt-3 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
-                    Resulta em: Bronze {money(preview.bronze)} · Prata {money(preview.silver)} · Ouro {money(preview.gold)} · RMV {money(preview.rmv)}
-                  </p>
-                </>
-              )}
-            </div>
+            <p className="mt-5 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
+              A <strong>meta olímpica</strong> (Bronze, Prata, Ouro e RMV, por faturamento ou por contratos) fica em{" "}
+              <Link href="/crm/configuracoes#meta-olimpica" className="text-brand hover:underline">
+                Configurações
+              </Link>
+              .
+            </p>
 
             {error && <p className="mt-3 text-sm text-brand">{error}</p>}
             <div className="mt-5 flex justify-end gap-2">

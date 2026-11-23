@@ -417,6 +417,14 @@ create index idx_receivables_sale on public.receivables (sale_id);
 create index idx_receivables_due on public.receivables (due_date) where status = 'pending';
 create index idx_receivables_paid on public.receivables (paid_at) where status = 'paid';
 
+-- Configurações do CRM da conta: modelo comercial e segmento do negócio.
+create table public.crm_settings (
+  workspace_id uuid primary key default public.active_workspace_id() references public.workspaces(id) on delete cascade,
+  business_model text not null default 'b2b' check (business_model in ('b2b', 'b2c')),
+  segment text,
+  updated_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------------
 -- 4) Gatilhos do CRM
 -- ---------------------------------------------------------------------------
@@ -509,6 +517,11 @@ as $$
 declare
   pid uuid;
 begin
+  -- Modelo comercial e segmento começam sem definição (B2B); o administrador ajusta em Configurações.
+  insert into public.crm_settings (workspace_id, business_model, segment)
+  values (p_ws, 'b2b', null)
+  on conflict (workspace_id) do nothing;
+
   insert into public.crm_pipelines (workspace_id, name, position)
   values (p_ws, 'Comercial', 0)
   returning id into pid;
@@ -890,6 +903,13 @@ create policy "crm_stage_history: leitura da carteira visível" on public.crm_st
       or opportunity_id in (select id from public.crm_opportunities where responsible_id = public.crm_my_member_id())
     )
   );
+
+alter table public.crm_settings enable row level security;
+create policy "crm_settings: leitura" on public.crm_settings
+  for select using (workspace_id = public.active_workspace_id());
+create policy "crm_settings: administrador gerencia" on public.crm_settings
+  for all using (workspace_id = public.active_workspace_id() and public.is_ws_admin())
+  with check (workspace_id = public.active_workspace_id() and public.is_ws_admin());
 
 alter table public.clients enable row level security;
 create policy "clients: membros leem e criam" on public.clients

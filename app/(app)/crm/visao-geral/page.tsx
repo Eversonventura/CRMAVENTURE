@@ -460,7 +460,6 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         {access.isFullAdmin && (
           <GoalsEditor
             targets={targets}
-            olympic={olympicSettings}
             members={((membersRes.data as { id: string; full_name: string }[] | null) ?? []).map((m) => ({ id: m.id, name: m.full_name }))}
             memberGoals={memberGoals}
           />

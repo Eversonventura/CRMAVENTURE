@@ -435,8 +435,6 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     .filter((st) => st.pipeline_id === firstPipelineId)
     .map((st) => ({ id: st.id, name: st.name }));
 
-  const stageGoalEditors = FOLLOWUP_ROLES.flatMap((role) => stagesByRole.get(role) ?? []);
-
   const data: DiarioData = {
     personId,
     people: crm.canSeeAll ? members.map((m) => ({ id: m.id, name: m.full_name })) : [],
@@ -455,7 +453,6 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     prepTasks,
     mesa,
     closed,
-    goalEditors: { stages: stageGoalEditors, weeklyLeads: weeklyBase },
   };
 
   return <DiarioView data={data} teamMembers={members} />;

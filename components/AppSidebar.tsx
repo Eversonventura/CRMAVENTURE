@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Menu,
+  Settings,
   UserPlus,
   Users,
   X,
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/crm/contatos", label: "Contatos & Empresas", Icon: Users },
   { href: "/crm/agenda", label: "Agenda", Icon: CalendarDays },
   { href: "/crm/propostas", label: "Propostas", Icon: FileText },
+  { href: "/crm/configuracoes", label: "Configurações", Icon: Settings, adminOnly: true },
 ];
 
 export function AppSidebar({

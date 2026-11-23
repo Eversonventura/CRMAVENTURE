@@ -51,6 +51,8 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 - `visao-geral/OlympicCard.tsx` e `olympic.ts`: modo da meta olímpica por **valor ou contratos** (só existe aqui); `OlympicBanner` recebe `scope` (conta) para guardar a comemoração por conta.
 - `visao-geral/page.tsx`: painel "Vendas e fechamentos" por vendedor, metas por vendedor, sem anúncios/WhatsApp/serviços pontuais.
 - `olympic-sales.ts`: sem a origem `pontual`.
+- Configurações (Sprint 14): `crm/configuracoes/*`, `crm/business.ts`, `crm/settings.ts`, tabela `crm_settings`. No Hub, cadência do Diário, meta olímpica e follow-ups ficavam no Diário, na Visão geral e em Tarefas; aqui só o administrador mexe neles em Configurações (o botão "Metas" do Diário e o de follow-ups de Tarefas foram removidos). Ao sincronizar mudanças dessas telas do Hub, aplique-as nos componentes de `configuracoes/`.
+- Menu lateral (`components/AppSidebar.tsx`) no lugar das abas do topo; sem a aba Recebimentos.
 - `actions.ts`: excluir lead protege a empresa de vendedor; anexos por conta; e-mail via Resend.
 
 ## Estado de cada commit do CRM do Hub (desde `8b139b8`)

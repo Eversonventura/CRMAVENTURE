@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import {
   cancelTaskAction,
@@ -10,7 +11,6 @@ import {
   createTaskAction,
   type CrmFormState,
 } from "../actions";
-import { FollowupRulesModal, type FollowupConfig } from "./FollowupRulesModal";
 import { TASK_TYPE_LABELS, type CrmTask, type TaskType, type TeamMemberOption } from "../types";
 
 function formatDueAt(value: string) {
@@ -327,28 +327,26 @@ export function TasksList({
   tasks,
   teamMembers,
   opportunities,
-  config,
+  canConfigure,
 }: {
   tasks: CrmTask[];
   teamMembers: TeamMemberOption[];
   opportunities: { id: string; companyName: string }[];
-  config: FollowupConfig | null;
+  canConfigure: boolean;
 }) {
-  const [configuring, setConfiguring] = useState(false);
   const [completingTask, setCompletingTask] = useState<CrmTask | null>(null);
   const [isPending, startTransition] = useTransition();
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        {config && (
-          <button
-            type="button"
-            onClick={() => setConfiguring(true)}
+        {canConfigure && (
+          <Link
+            href="/crm/configuracoes#follow-ups"
             className="rounded-lg border border-border px-3 py-2 text-sm text-ink transition hover:border-brand"
           >
             Configurar follow-ups
-          </button>
+          </Link>
         )}
         <NewTaskForm teamMembers={teamMembers} opportunities={opportunities} />
       </div>
@@ -409,8 +407,6 @@ export function TasksList({
           ))}
         </div>
       )}
-
-      {configuring && config && <FollowupRulesModal config={config} onClose={() => setConfiguring(false)} />}
 
       {completingTask && (
         <CompleteTaskModal

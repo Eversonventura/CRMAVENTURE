@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
 import { TasksList } from "./TasksList";
-import type { FollowupRule } from "../followup-plan";
 import type { CrmTask, TeamMemberOption } from "../types";
 
 export default async function CrmTarefasPage() {
   const supabase = await createClient();
   const canConfigure = (await getAccessContext()).isFullAdmin;
 
-  const [{ data: tasks }, { data: teamMembers }, { data: opportunities }, { data: ruleRows }, { data: stageRows }, { data: pipelineRows }] = await Promise.all([
+  const [{ data: tasks }, { data: teamMembers }, { data: opportunities }] = await Promise.all([
     supabase
       .from("crm_tasks")
       .select(
@@ -21,13 +20,6 @@ export default async function CrmTarefasPage() {
       .from("crm_opportunities")
       .select("id, crm_companies(name)")
       .eq("status", "aberta"),
-    canConfigure
-      ? supabase.from("crm_followup_rules").select("id, stage_id, task_type, interval_days, repeat, daily_goal, active")
-      : Promise.resolve({ data: [] }),
-    canConfigure
-      ? supabase.from("crm_stages").select("id, name, pipeline_id, kind, position").order("position")
-      : Promise.resolve({ data: [] }),
-    canConfigure ? supabase.from("crm_pipelines").select("id, name").order("position") : Promise.resolve({ data: [] }),
   ]);
 
   const members = (teamMembers as TeamMemberOption[] | null) ?? [];
@@ -74,15 +66,7 @@ export default async function CrmTarefasPage() {
       tasks={rows}
       teamMembers={members}
       opportunities={opportunityOptions}
-      config={
-        canConfigure
-          ? {
-              rules: (ruleRows as FollowupRule[] | null) ?? [],
-              stages: (stageRows as { id: string; name: string; pipeline_id: string; kind: string; position: number }[] | null) ?? [],
-              pipelines: (pipelineRows as { id: string; name: string }[] | null) ?? [],
-            }
-          : null
-      }
+      canConfigure={canConfigure}
     />
   );
 }

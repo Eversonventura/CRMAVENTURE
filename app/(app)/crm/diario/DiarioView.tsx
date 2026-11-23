@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
@@ -11,7 +12,7 @@ import { whatsappLink } from "../linkUtils";
 import { ApproachModal } from "./ApproachModal";
 import { OpportunityModal } from "../funil/OpportunityModal";
 import type { FunilOpportunityRow } from "../funil/FunilBoard";
-import { clearOffDay, markLeadChecked, getOpportunityForModal, saveDailyGoals, setOffDays, swapPick } from "./actions";
+import { clearOffDay, markLeadChecked, getOpportunityForModal, setOffDays, swapPick } from "./actions";
 import { STAGE_ROLE_LABELS, TASK_TYPE_LABELS, type CrmStage, type CrmTask, type StageRole, type TeamMemberOption } from "../types";
 
 export type DiarioTask = CrmTask & {
@@ -92,7 +93,6 @@ export type DiarioData = {
     shortage: number;
   };
   stageOptions: { id: string; name: string }[];
-  goalEditors: { stages: { stageId: string; name: string; goal: number | null }[]; weeklyLeads: number };
 };
 
 const card = "rounded-xl border border-border bg-surface p-4";
@@ -249,82 +249,6 @@ function TaskRow({
         </button>
       </div>
     </div>
-  );
-}
-
-function GoalsModal({ data, onClose }: { data: DiarioData; onClose: () => void }) {
-  const [approaches, setApproaches] = useState(String(data.approach.goal));
-  const [weekly, setWeekly] = useState(String(data.goalEditors.weeklyLeads));
-  const [stageGoals, setStageGoals] = useState<Record<string, string>>(
-    Object.fromEntries(data.goalEditors.stages.map((s) => [s.stageId, s.goal === null ? "" : String(s.goal)]))
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    const result = await saveDailyGoals(
-      Number(approaches),
-      data.goalEditors.stages.map((s) => ({
-        stageId: s.stageId,
-        goal: stageGoals[s.stageId] === "" ? null : Number(stageGoals[s.stageId]),
-      })),
-      Number(weekly)
-    );
-    setBusy(false);
-    if (result.error) setError(result.error);
-    else onClose();
-  }
-
-  const input = "w-20 rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand";
-  return (
-    <ModalBackdrop dirty={false} onClose={onClose}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-xl">
-        <h2 className="font-display text-xl font-medium text-ink">Metas do dia</h2>
-        <p className="mt-1 text-xs text-muted">
-          Mude conforme a estratégia do momento (ex.: menos abordagens, mais follow-ups). Vale pra todo o time.
-        </p>
-        <div className="mt-4 space-y-3 text-sm">
-          <label className="flex items-center justify-between gap-3">
-            <span className="text-ink">Novas abordagens por dia</span>
-            <input type="number" min={0} value={approaches} onChange={(e) => setApproaches(e.target.value)} className={input} />
-          </label>
-          <label className="flex items-center justify-between gap-3">
-            <span className="text-ink">Leads novos por semana</span>
-            <input type="number" min={0} value={weekly} onChange={(e) => setWeekly(e.target.value)} className={input} />
-          </label>
-          <p className="pt-2 text-xs font-medium uppercase tracking-wide text-muted">Follow-ups por dia</p>
-          {data.goalEditors.stages.map((s) => (
-            <label key={s.stageId} className="flex items-center justify-between gap-3">
-              <span className="text-ink">{s.name}</span>
-              <input
-                type="number"
-                min={0}
-                placeholder="—"
-                value={stageGoals[s.stageId]}
-                onChange={(e) => setStageGoals({ ...stageGoals, [s.stageId]: e.target.value })}
-                className={input}
-              />
-            </label>
-          ))}
-        </div>
-        {error && <p className="mt-3 text-sm text-brand">{error}</p>}
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-border px-3.5 py-2 text-sm text-muted hover:text-ink">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={save}
-            className="rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {busy ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </ModalBackdrop>
   );
 }
 
@@ -495,7 +419,6 @@ function ClosedNote({ opportunityId }: { opportunityId: string }) {
 export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMembers: TeamMemberOption[] }) {
   const router = useRouter();
   const [completing, setCompleting] = useState<DiarioTask | null>(null);
-  const [goalsOpen, setGoalsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [approachModal, setApproachModal] = useState<{ mode: "lead" | "mesa" | "next"; opportunityId: string; companyName: string } | null>(null);
@@ -554,13 +477,12 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           )}
           <OffDaysControl data={data} />
           {data.canEditGoals && (
-            <button
-              type="button"
-              onClick={() => setGoalsOpen(true)}
+            <Link
+              href="/crm/configuracoes#cadencia"
               className="rounded-lg border border-border px-3 py-1.5 text-sm text-ink hover:border-brand"
             >
-              Metas
-            </button>
+              Configurar cadência
+            </Link>
           )}
         </div>
       </div>
@@ -953,7 +875,6 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           onClose={() => setOpenedCard(null)}
         />
       )}
-      {goalsOpen && <GoalsModal data={data} onClose={() => setGoalsOpen(false)} />}
     </div>
   );
 }

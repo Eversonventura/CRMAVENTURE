@@ -41,6 +41,7 @@ export async function saveFollowupRule(
   );
   if (error) return { error: error.message };
   revalidatePath("/crm/tarefas");
+  revalidatePath("/crm/configuracoes");
   return {};
 }
 
@@ -51,6 +52,7 @@ export async function deleteFollowupRule(stageId: string): Promise<Result> {
   const { error } = await supabase.from("crm_followup_rules").delete().eq("stage_id", stageId);
   if (error) return { error: error.message };
   revalidatePath("/crm/tarefas");
+  revalidatePath("/crm/configuracoes");
   return {};
 }
 
@@ -92,5 +94,6 @@ export async function applyRuleToExistingCards(stageId: string): Promise<Result 
   );
   if (error) return { error: error.message };
   revalidatePath("/crm/tarefas");
+  revalidatePath("/crm/configuracoes");
   return { created: targets.length };
 }

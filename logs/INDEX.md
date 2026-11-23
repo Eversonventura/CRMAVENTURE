@@ -16,3 +16,4 @@
 | Hub → avantecrm (24ae357..6b6c598): meta olímpica com banner, confete e caixas por medalha; venda recorrente usa a mensalidade; desconto na 1ª mensalidade; cartões de metas com destaque; card perdido na hora | 11 |
 | Só o Hub cria contas: removido "Outra conta" da tela e a função create_workspace do banco (migration 002) | 12 |
 | Menu lateral no lugar do cabeçalho e das abas; sem o texto "CRM" ao lado da logo; aba Recebimentos removida | 13 |
+| Aba Configurações (só administrador): perfil do negócio (B2B/B2C e segmento), cadência do Diário, meta olímpica por faturamento ou contratos e follow-ups; migration 003 | 14 |
