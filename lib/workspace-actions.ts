@@ -1,9 +1,11 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/access";
+import { createServiceClient } from "@/lib/supabase/service";
+import { sendCrmEmail } from "@/app/(app)/crm/email";
 import { cleanWorkspaceId, WS_COOKIE } from "@/lib/workspace";
 
 type Result = { error?: string; message?: string };
@@ -65,17 +67,54 @@ export async function deleteWorkspace(id: string): Promise<Result> {
   return {};
 }
 
+async function siteOrigin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? (host ? `${proto}://${host}` : "");
+}
+
 export async function inviteMember(workspaceId: string, email: string, role: string): Promise<Result> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("invite_to_workspace", { p_ws: workspaceId, p_email: email, p_role: role });
   if (error) return fail(error);
   refresh();
-  return {
-    message:
-      data === "added"
-        ? "Pronto! Essa pessoa já tem login e agora participa da conta."
-        : "Convite registrado. Quando a pessoa criar o login com esse e-mail, a conta aparece para ela automaticamente.",
-  };
+
+  const to = email.trim().toLowerCase();
+  const origin = await siteOrigin();
+  const { data: ws } = await supabase.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
+  const workspaceName = (ws as { name: string } | null)?.name ?? "uma conta";
+
+  if (data === "added") {
+    // Já tinha login: entra na conta na hora. Avisa por e-mail se o envio (Resend) estiver configurado.
+    if (process.env.RESEND_API_KEY) {
+      await sendCrmEmail(
+        [to],
+        `Você foi adicionado(a) à conta ${workspaceName}`,
+        `Você agora participa da conta "${workspaceName}" no avantecrm.\n\nEntre com o seu login e escolha a conta no seletor do menu lateral:\n${origin}/login\n`
+      );
+      return { message: "Pronto! Essa pessoa já tinha login e agora participa da conta. Enviamos um aviso por e-mail." };
+    }
+    return {
+      message:
+        "Pronto! Essa pessoa já tinha login e agora participa da conta. Nenhum e-mail foi enviado: peça para ela entrar e escolher a conta no seletor do menu lateral.",
+    };
+  }
+
+  // Ainda não tem login: o Supabase manda o e-mail de convite com o link para definir a senha.
+  // Ao criar o usuário, o gatilho handle_new_user já coloca a pessoa nesta conta.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { message: "Convite registrado, mas o envio de e-mail não está configurado. Peça para a pessoa criar o login com esse e-mail." };
+  }
+  const { error: mailError } = await createServiceClient().auth.admin.inviteUserByEmail(to, {
+    redirectTo: `${origin}/auth/callback`,
+  });
+  if (mailError) {
+    return {
+      message: `Convite registrado, mas o e-mail não saiu (${mailError.message}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
+    };
+  }
+  return { message: "Convite enviado por e-mail. A pessoa define a senha pelo link e já entra na conta." };
 }
 
 export async function cancelInvite(id: string): Promise<Result> {
