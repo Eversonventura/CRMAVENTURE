@@ -53,6 +53,7 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 - `olympic-sales.ts`: sem a origem `pontual`.
 - Configurações (Sprint 14): `crm/configuracoes/*`, `crm/business.ts`, `crm/settings.ts`, tabela `crm_settings`. No Hub, cadência do Diário, meta olímpica e follow-ups ficavam no Diário, na Visão geral e em Tarefas; aqui só o administrador mexe neles em Configurações (o botão "Metas" do Diário e o de follow-ups de Tarefas foram removidos). Ao sincronizar mudanças dessas telas do Hub, aplique-as nos componentes de `configuracoes/`.
 - Formulários por modelo (Sprint 16): `funil/OpportunityModal.tsx` e `contatos/*` mudam conforme B2B/B2C e segmento (provedor `CrmSettingsContext`); `form-fields.ts` faz as ações gravarem só os campos que o formulário mostrou. O Hub não tem isso: ao sincronizar mudanças desses formulários, aplique à mão respeitando `isB2C` e `showOnline`.
+- Mensagens (Sprint 17): `crm/mensagens/*`, `crm/messages.ts`, `funil/MessageSuggestions.tsx` e a tabela `crm_message_templates` não existem no Hub; o `ActivityTimeline` do card ganhou a sugestão de mensagem acima dele (em `OpportunityModal.tsx`).
 - Menu lateral (`components/AppSidebar.tsx`) no lugar das abas do topo; sem a aba Recebimentos.
 - `actions.ts`: excluir lead protege a empresa de vendedor; anexos por conta; e-mail via Resend.
 

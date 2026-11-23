@@ -19,3 +19,4 @@
 | Aba Configurações (só administrador): perfil do negócio (B2B/B2C e segmento), cadência do Diário, meta olímpica por faturamento ou contratos e follow-ups; migration 003 | 14 |
 | Funil padrão enxuto para contas novas (Lead, Contato realizado, Fechamento, Perdido); cartão de propostas some sem etapa de proposta; migration 004 | 15 |
 | Formulário único de contato e oportunidade (Funil e Contatos) por B2B/B2C e segmento; site e redes só para agência; ações gravam só os campos enviados | 16 |
+| Aba Mensagens: modelos de tentativa de contato, follow-up, indicação e outros (administrador edita); sugestão no card do lead com copiar e abrir no WhatsApp; migration 005 | 17 |

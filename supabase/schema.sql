@@ -425,6 +425,20 @@ create table public.crm_settings (
   updated_at timestamptz not null default now()
 );
 
+-- Modelos de mensagem sugeridos no card do lead (tentativa de contato, follow-up, indicação…).
+-- Variáveis no texto: {nome} (contato), {empresa} e {vendedor} (quem está enviando).
+create table public.crm_message_templates (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null default public.active_workspace_id() references public.workspaces(id) on delete cascade,
+  kind text not null check (kind in ('tentativa', 'follow_up', 'indicacao', 'outro')),
+  title text not null,
+  body text not null,
+  position int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index idx_crm_message_templates_ws on public.crm_message_templates (workspace_id, kind, position);
+
 -- ---------------------------------------------------------------------------
 -- 4) Gatilhos do CRM
 -- ---------------------------------------------------------------------------
@@ -509,6 +523,22 @@ create trigger crm_activities_first_contact
 -- ---------------------------------------------------------------------------
 -- 5) Padrões de uma conta nova (funil, regras de follow-up, metas)
 -- ---------------------------------------------------------------------------
+create function public.seed_message_templates(p_ws uuid)
+returns void
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  insert into public.crm_message_templates (workspace_id, kind, title, body, position) values
+    (p_ws, 'tentativa', 'Primeira tentativa', 'Olá, {nome}! Aqui é {vendedor}. Tudo bem? Vi o seu contato e queria entender melhor o que você está buscando. Posso te ligar, ou prefere conversar por aqui?', 0),
+    (p_ws, 'tentativa', 'Segunda tentativa', 'Oi, {nome}! Tentei falar com você mais cedo. Qual o melhor horário para conversarmos hoje ou amanhã?', 1),
+    (p_ws, 'follow_up', 'Retomar a conversa', 'Oi, {nome}, tudo bem? Passando para saber se você teve a chance de pensar no que conversamos. Posso ajudar com alguma dúvida?', 0),
+    (p_ws, 'follow_up', 'Depois da proposta', 'Olá, {nome}! Conseguiu avaliar a proposta que enviei? Se quiser, ajusto algum ponto para ficar mais adequado para você.', 1),
+    (p_ws, 'indicacao', 'Pedir indicação', 'Oi, {nome}! Que bom que deu tudo certo por aqui. Você conhece alguém que também poderia se beneficiar do nosso trabalho? Se puder indicar, agradeço muito!', 0),
+    (p_ws, 'outro', 'Agradecimento', 'Obrigado pelo seu tempo, {nome}! Qualquer dúvida, é só chamar.', 0);
+end;
+$$;
+
 create function public.seed_workspace_defaults(p_ws uuid)
 returns void
 language plpgsql security definer
@@ -525,6 +555,8 @@ begin
   insert into public.crm_pipelines (workspace_id, name, position)
   values (p_ws, 'Comercial', 0)
   returning id into pid;
+
+  perform public.seed_message_templates(p_ws);
 
   -- Funil padrão enxuto: o cliente adiciona mais etapas se quiser (aba Funil → Etapas).
   insert into public.crm_stages (workspace_id, pipeline_id, name, position, color, kind, role) values
@@ -895,6 +927,13 @@ create policy "crm_settings: administrador gerencia" on public.crm_settings
   for all using (workspace_id = public.active_workspace_id() and public.is_ws_admin())
   with check (workspace_id = public.active_workspace_id() and public.is_ws_admin());
 
+alter table public.crm_message_templates enable row level security;
+create policy "crm_message_templates: leitura" on public.crm_message_templates
+  for select using (workspace_id = public.active_workspace_id());
+create policy "crm_message_templates: administrador gerencia" on public.crm_message_templates
+  for all using (workspace_id = public.active_workspace_id() and public.is_ws_admin())
+  with check (workspace_id = public.active_workspace_id() and public.is_ws_admin());
+
 alter table public.clients enable row level security;
 create policy "clients: membros leem e criam" on public.clients
   for select using (workspace_id = public.active_workspace_id());
@@ -916,6 +955,7 @@ create policy "receivables: administrador gerencia" on public.receivables
 -- ---------------------------------------------------------------------------
 revoke all on function public._require_ws_admin(uuid) from public, anon, authenticated;
 revoke all on function public.seed_workspace_defaults(uuid) from public, anon, authenticated;
+revoke all on function public.seed_message_templates(uuid) from public, anon, authenticated;
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 revoke all on function public.sync_profile_to_members() from public, anon, authenticated;
 

@@ -13,6 +13,7 @@ import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { ACQUISITION_CHANNELS, TEMPERATURE_LABELS, type CrmStage, type TeamMemberOption } from "../types";
 import type { FunilOpportunityRow } from "./FunilBoard";
 import { ActivityTimeline } from "./ActivityTimeline";
+import { MessageSuggestions } from "./MessageSuggestions";
 import { whatsappLink, instagramLink } from "../linkUtils";
 import { useCrmSettings } from "../CrmSettingsContext";
 import { showCompanyOnlineFields } from "../business";
@@ -515,6 +516,12 @@ export function OpportunityModal({
             clicar "Salvar"). Só existe pra oportunidade já criada. */}
         {isEdit && (
           <div className="w-full shrink-0 border-t border-border bg-surface p-5 sm:w-96 sm:overflow-y-auto sm:border-l sm:border-t-0">
+            <MessageSuggestions
+              companyName={isB2C ? (opportunity!.contactName ?? opportunity!.companyName) : opportunity!.companyName}
+              contactName={opportunity!.contactName}
+              phone={opportunity!.contactWhatsapp ?? opportunity!.contactPhone}
+              stageRole={stages.find((st) => st.id === opportunity!.stageId)?.role ?? null}
+            />
             <ActivityTimeline opportunityId={opportunity!.id} />
           </div>
         )}
