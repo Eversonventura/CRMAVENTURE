@@ -179,7 +179,7 @@ export default async function CrmPropostasPage({
                     <td className="px-4 py-3">
                       {r.payment_defined_at ? (
                         <span className="text-xs text-emerald-700">
-                          ✓ {r.deal_type === "recorrencia" ? "Recorrência" : "Projeto"} · ver em Recebimentos
+                          ✓ {r.deal_type === "recorrencia" ? "Recorrência" : "Projeto"} · pagamento definido
                         </span>
                       ) : (
                         <DefinePaymentButton opportunityId={r.id} companyName={r.companyName} defaultValue={r.estimated_value} />

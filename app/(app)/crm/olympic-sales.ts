@@ -51,7 +51,7 @@ export function monthlySales(args: {
     entries.push({ key: `opp-${o.id}`, source: "crm", label: "Fechamento no CRM", client: o.company, value, date });
   }
 
-  // 2) Vendas lançadas direto em Recebimentos (venda avulsa / comissão). As
+  // 2) Vendas lançadas direto, sem oportunidade (venda avulsa / comissão). As
   //    ligadas a uma oportunidade já entraram no item 1; a data é a do primeiro vencimento.
   for (const s of args.receivableSales) {
     if (s.opportunityId) continue;

@@ -18,7 +18,6 @@ async function requireFullAdmin(): Promise<string | null> {
 }
 
 function refresh() {
-  revalidatePath("/crm/recebimentos");
   revalidatePath("/crm/propostas");
   revalidatePath("/crm/visao-geral");
 }
@@ -105,69 +104,6 @@ export async function defineDealPayment(args: {
     .update({ deal_type: args.type, payment_defined_at: new Date().toISOString() })
     .eq("id", opp.id);
   if (markError) return { error: markError.message };
-  refresh();
-  return {};
-}
-
-// Venda avulsa (ex.: serviço extra a cliente atual) ou comissão de fornecedor,
-// lançadas direto em Recebimentos.
-export async function createStandaloneReceivable(args: {
-  kind: "projeto" | "comissao";
-  clientId: string | null;
-  description: string;
-  installments: InstallmentInput[];
-}): Promise<Result> {
-  const denied = await requireFullAdmin();
-  if (denied) return { error: denied };
-  if (!args.description.trim()) return { error: "Descreva a venda ou a comissão." };
-  if (args.kind === "projeto" && !args.clientId) return { error: "Escolha o cliente." };
-  const invalid = validateInstallments(args.installments);
-  if (invalid) return { error: invalid };
-  const result = await insertSale({
-    kind: args.kind,
-    clientId: args.clientId,
-    opportunityId: null,
-    description: args.description.trim(),
-    installments: args.installments,
-  });
-  if (result.error) return result;
-  refresh();
-  return {};
-}
-
-export async function markReceivablePaid(id: string, paidAt?: string): Promise<Result> {
-  const denied = await requireFullAdmin();
-  if (denied) return { error: denied };
-  const date = paidAt && DATE_RE.test(paidAt) ? paidAt : new Date().toISOString().slice(0, 10);
-  const supabase = await createClient();
-  const { error } = await supabase.from("receivables").update({ status: "paid", paid_at: date }).eq("id", id);
-  if (error) return { error: error.message };
-  refresh();
-  return {};
-}
-
-export async function unmarkReceivablePaid(id: string): Promise<Result> {
-  const denied = await requireFullAdmin();
-  if (denied) return { error: denied };
-  const supabase = await createClient();
-  const { error } = await supabase.from("receivables").update({ status: "pending", paid_at: null }).eq("id", id);
-  if (error) return { error: error.message };
-  refresh();
-  return {};
-}
-
-export async function deleteSale(saleId: string): Promise<Result> {
-  const denied = await requireFullAdmin();
-  if (denied) return { error: denied };
-  const supabase = await createClient();
-  // Se a venda veio de uma oportunidade, volta a "pagamento não definido".
-  const { data: rows } = await supabase.from("receivables").select("opportunity_id").eq("sale_id", saleId);
-  const oppIds = Array.from(new Set((rows ?? []).map((r) => r.opportunity_id).filter(Boolean))) as string[];
-  const { error } = await supabase.from("receivables").delete().eq("sale_id", saleId);
-  if (error) return { error: error.message };
-  if (oppIds.length > 0) {
-    await supabase.from("crm_opportunities").update({ deal_type: null, payment_defined_at: null }).in("id", oppIds);
-  }
   refresh();
   return {};
 }

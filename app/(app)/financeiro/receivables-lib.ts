@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/access";
 export type InstallmentInput = { amount: number; dueDate: string; paid: boolean };
 
 // Grava as parcelas de uma venda (sale_id agrupa). Usado pelo funil (projeto /
-// 1ª mensalidade) e por Recebimentos (venda avulsa, comissão).
+// 1ª mensalidade).
 export async function insertSale(args: {
   kind: "projeto" | "comissao" | "primeira_mensalidade";
   clientId: string | null;

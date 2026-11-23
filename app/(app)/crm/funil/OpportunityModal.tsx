@@ -473,7 +473,7 @@ export function OpportunityModal({
                   const msg =
                     `Excluir o lead "${name}" de vez?\n\n` +
                     `Some a empresa, o contato, as tarefas, o histórico e as anotações. Não dá para desfazer.` +
-                    (sold ? "\n\nEste lead já tem venda fechada: os recebimentos permanecem." : "");
+                    (sold ? "\n\nEste lead já tem venda fechada: o plano de pagamento permanece." : "");
                   if (!window.confirm(msg)) return;
                   setDeleting(true);
                   startTransition(async () => {

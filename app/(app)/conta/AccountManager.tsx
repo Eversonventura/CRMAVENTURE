@@ -22,7 +22,7 @@ const ROLE_LABELS: Record<Role, string> = {
   vendedor: "Vendedor",
 };
 const ROLE_HINTS: Record<Role, string> = {
-  administrador: "Vê tudo e configura etapas, metas, regras e recebimentos.",
+  administrador: "Vê tudo e configura o CRM (etapas, cadência, metas, follow-ups) e a equipe.",
   gestor: "Vê toda a carteira (leads, tarefas, Diário de todos).",
   vendedor: "Vê e trabalha só as oportunidades e tarefas em que é o responsável.",
 };
@@ -222,7 +222,7 @@ export function AccountManager({
         <section className="rounded-xl border border-red-200 bg-red-50/50 p-5">
           <h2 className="font-display text-base font-medium text-red-800">Excluir esta conta</h2>
           <p className="mt-1 text-xs text-red-800/80">
-            Apaga permanentemente todos os leads, empresas, tarefas e recebimentos da conta — para todas as pessoas.
+            Apaga permanentemente todos os leads, empresas, tarefas e propostas da conta — para todas as pessoas.
           </p>
           <button
             type="button"

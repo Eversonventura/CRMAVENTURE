@@ -1,10 +1,4 @@
-import { CrmTabs } from "./CrmTabs";
-
+// A navegação do CRM fica no menu lateral (components/AppSidebar.tsx).
 export default function CrmLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div>
-      <CrmTabs />
-      {children}
-    </div>
-  );
+  return <div>{children}</div>;
 }

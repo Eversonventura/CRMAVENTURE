@@ -19,7 +19,7 @@ export type AccessContext = {
   workspaceName: string | null;
   workspaces: WorkspaceSummary[];
   crmRole: CrmRole | null;
-  // Administrador da conta ativa: edita etapas, metas, regras e recebimentos.
+  // Administrador da conta ativa: configura o CRM (etapas, cadência, metas, follow-ups) e a equipe.
   isFullAdmin: boolean;
   // id do vínculo (team_members) da pessoa na conta ativa.
   teamMemberId: string | null;

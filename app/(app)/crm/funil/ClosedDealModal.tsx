@@ -11,7 +11,7 @@ const input =
 
 // Aparece ao fechar uma venda (e em Propostas → Fechadas, pra quem ficou
 // pendente): como esse cliente vai pagar? Recorrência alimenta a mensalidade;
-// projeto vira parcelas em Recebimentos.
+// projeto vira parcelas.
 export function ClosedDealModal({
   opportunityId,
   companyName,
@@ -64,7 +64,7 @@ export function ClosedDealModal({
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-white p-6 shadow-xl">
         <h2 className="font-display text-xl font-medium text-ink">Venda fechada 🎉</h2>
         <p className="mt-1 text-sm text-muted">
-          {companyName} — como esse cliente vai pagar? Isso alimenta Recebimentos e as metas.
+          {companyName} — como esse cliente vai pagar? Isso alimenta as metas.
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -155,7 +155,7 @@ export function ClosedDealModal({
                 </div>
               )}
               <p className="text-xs text-muted">
-                Grava no cadastro do cliente. A meta olímpica conta a venda (a mensalidade cheia); desconto e parcelas só mudam o que será recebido em Recebimentos.
+                Grava no cadastro do cliente. A meta olímpica conta a venda (a mensalidade cheia); desconto e parcelas só mudam o que será recebido.
               </p>
               {error && <p className="text-sm text-brand">{error}</p>}
               {firstMode === "normal" || firstMode === "desconto" ? (
