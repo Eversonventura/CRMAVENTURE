@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CompanyContactModal, type CompanyEditData } from "./CompanyContactModal";
+import { CompanyContactModal } from "./CompanyContactModal";
+import { OpportunityModal } from "../funil/OpportunityModal";
+import type { FunilOpportunityRow } from "../funil/FunilBoard";
+import { getOpportunityForModal } from "../diario/actions";
+import { useCrmSettings } from "../CrmSettingsContext";
+import { showCompanyOnlineFields } from "../business";
 import { ImportModal } from "./ImportModal";
 import { deleteCompanyAction, deleteCompaniesAction } from "./actions";
 import { registerContactAttempt } from "../actions";
-import { TASK_TYPE_LABELS, type TaskType } from "../types";
+import { TASK_TYPE_LABELS, type CrmStage, type TaskType, type TeamMemberOption } from "../types";
 import { whatsappLink, instagramLink } from "../linkUtils";
 
 type CompanyRow = {
@@ -24,6 +29,7 @@ type CompanyRow = {
   bioLink: string | null;
   opportunityCount: number;
   openOpportunityId: string | null;
+  editOpportunityId: string | null;
   stageName: string | null;
   stageColor: string | null;
   nextTask: { type: string; dueAt: string } | null;
@@ -54,8 +60,22 @@ function ExternalLink({ href, label }: { href: string; label?: string }) {
   );
 }
 
-export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] }) {
+export function ContatosEmpresasList({
+  companies,
+  stages,
+  teamMembers,
+}: {
+  companies: CompanyRow[];
+  stages: CrmStage[];
+  teamMembers: TeamMemberOption[];
+}) {
+  const settings = useCrmSettings();
+  // B2C: só a pessoa (contato). B2B: empresa + contato; redes sociais e site só em agência de marketing.
+  const isB2C = settings.businessModel === "b2c";
+  const showOnline = showCompanyOnlineFields(settings);
   const [showForm, setShowForm] = useState(false);
+  const [openedCard, setOpenedCard] = useState<{ opportunity: FunilOpportunityRow; stages: CrmStage[] } | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState<string | null>(null);
   // ?importar=1 (atalho do Diário) abre direto a importação de planilha.
   const searchParams = useSearchParams();
   const [showImport, setShowImport] = useState(searchParams.get("importar") === "1");
@@ -80,6 +100,28 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
     }
     setAttemptDoneId(c.id);
     setTimeout(() => setAttemptDoneId((prev) => (prev === c.id ? null : prev)), 2500);
+  }
+
+  // "Editar" abre o MESMO card do Funil (dados do contato, comerciais e origem), para o
+  // cadastro por aqui e pelo Funil ser igual. Sem oportunidade, cai no formulário simples.
+  async function handleEdit(c: CompanyRow) {
+    if (!c.editOpportunityId) {
+      setEditingCompany(c);
+      return;
+    }
+    setLoadingEdit(c.id);
+    setAttemptError(null);
+    const result = await getOpportunityForModal(c.editOpportunityId);
+    setLoadingEdit(null);
+    if (result.error || !result.opportunity || !result.stages) {
+      setAttemptError(result.error ?? "Não deu pra abrir o card.");
+      return;
+    }
+    const member = teamMembers.find((m) => m.id === result.opportunity!.responsibleId);
+    setOpenedCard({
+      stages: result.stages,
+      opportunity: { ...result.opportunity, responsibleName: member?.full_name ?? null, responsiblePhoto: member?.photo_url ?? null },
+    });
   }
 
   async function handleDelete(c: CompanyRow) {
@@ -122,53 +164,44 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
   // seleção; sem seleção, exporta a lista inteira.
   function handleExport() {
     const rows = selectedIds.size > 0 ? companies.filter((c) => selectedIds.has(c.id)) : companies;
-    const headers = [
-      "Empresa",
-      "Segmento",
-      "Cidade",
-      "Contato principal",
-      "Cargo",
-      "Telefone",
-      "WhatsApp",
-      "E-mail",
-      "CNPJ",
-      "CEP",
-      "Site",
-      "Instagram",
-      "Google Meu Negócio",
-      "Outra rede social",
-      "Link (bio)",
-      "Oportunidades",
+    // Colunas do CSV seguem a mesma regra da tabela: B2C só a pessoa; B2B empresa + contato;
+    // redes sociais e site só para agência de marketing.
+    type Col = { header: string; value: (c: CompanyRow) => string | number | null };
+    const cols: Col[] = [
+      ...(isB2C
+        ? [{ header: "Contato", value: (c: CompanyRow) => c.primaryContact?.name ?? c.name }]
+        : [
+            { header: "Empresa", value: (c: CompanyRow) => c.name },
+            { header: "Segmento", value: (c: CompanyRow) => c.segment },
+            { header: "Cidade", value: (c: CompanyRow) => c.city },
+            { header: "Contato principal", value: (c: CompanyRow) => c.primaryContact?.name ?? "" },
+            { header: "Cargo", value: (c: CompanyRow) => c.primaryContact?.role_title ?? "" },
+          ]),
+      { header: "Telefone", value: (c) => c.primaryContact?.phone ?? "" },
+      { header: "WhatsApp", value: (c) => c.primaryContact?.whatsapp ?? "" },
+      { header: "E-mail", value: (c) => c.primaryContact?.email ?? "" },
+      ...(isB2C
+        ? [{ header: "Observação interna", value: (c: CompanyRow) => c.internalNotes }]
+        : [
+            { header: "CNPJ", value: (c: CompanyRow) => c.cnpj },
+            { header: "CEP", value: (c: CompanyRow) => c.postalCode },
+          ]),
+      ...(showOnline
+        ? [
+            { header: "Site", value: (c: CompanyRow) => c.website },
+            { header: "Instagram", value: (c: CompanyRow) => c.instagram },
+            { header: "Google Meu Negócio", value: (c: CompanyRow) => c.googleBusinessUrl },
+            { header: "Outra rede social", value: (c: CompanyRow) => c.otherSocialUrl },
+            { header: "Link (bio)", value: (c: CompanyRow) => c.bioLink },
+          ]
+        : []),
+      { header: "Oportunidades", value: (c) => c.opportunityCount },
     ];
     const escapeCsv = (value: string | number | null) => {
       const str = value === null ? "" : String(value);
       return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
     };
-    const lines = [
-      headers.join(","),
-      ...rows.map((c) =>
-        [
-          c.name,
-          c.segment,
-          c.city,
-          c.primaryContact?.name ?? "",
-          c.primaryContact?.role_title ?? "",
-          c.primaryContact?.phone ?? "",
-          c.primaryContact?.whatsapp ?? "",
-          c.primaryContact?.email ?? "",
-          c.cnpj,
-          c.postalCode,
-          c.website,
-          c.instagram,
-          c.googleBusinessUrl,
-          c.otherSocialUrl,
-          c.bioLink,
-          c.opportunityCount,
-        ]
-          .map(escapeCsv)
-          .join(",")
-      ),
-    ];
+    const lines = [cols.map((c) => c.header).join(","), ...rows.map((r) => cols.map((c) => escapeCsv(c.value(r))).join(","))];
     // BOM (﻿) evita o Excel abrir acento errado num CSV UTF-8.
     const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -199,7 +232,7 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
           title={
             selectedIds.size > 0
               ? `Exportar ${selectedIds.size} selecionada(s)`
-              : "Exportar todas as empresas listadas"
+              : "Exportar todos os contatos listados"
           }
           className="rounded-lg border border-border px-4 py-2 text-sm text-ink transition hover:border-brand disabled:opacity-50"
         >
@@ -232,46 +265,44 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
             min-w garante uma largura mínima legível por coluna — abaixo
             dela, o container acima assume a rolagem horizontal em vez
             de espremer o texto a ponto de ficar ilegível (celular). */}
-        <table className="w-full min-w-[980px] table-fixed text-sm">
-          <colgroup>
-            <col className="w-[3%]" />
-            <col className="w-[15%]" />
-            <col className="w-[10%]" />
-            <col className="w-[9%]" />
-            <col className="w-[11%]" />
-            <col className="w-[7%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
-            <col className="w-[5%]" />
-            <col className="w-[4%]" />
-            <col className="w-[11%]" />
-          </colgroup>
+        <table className={`w-full text-sm ${isB2C ? "min-w-[760px]" : showOnline ? "min-w-[1180px]" : "min-w-[900px]"}`}>
           <thead>
             <tr className="border-b border-border text-left text-muted">
-              <th className="px-4 py-3 font-normal">
+              <th className="w-10 px-4 py-3 font-normal">
                 <input
                   type="checkbox"
                   checked={companies.length > 0 && selectedIds.size === companies.length}
                   onChange={toggleSelectAll}
                   className="h-4 w-4 accent-brand"
-                  aria-label="Selecionar todas"
+                  aria-label="Selecionar todos"
                 />
               </th>
-              <th className="px-4 py-3 font-normal">Empresa</th>
-              <th className="px-4 py-3 font-normal">Contato principal</th>
+              {isB2C ? (
+                <th className="px-4 py-3 font-normal">Contato</th>
+              ) : (
+                <>
+                  <th className="px-4 py-3 font-normal">Empresa</th>
+                  <th className="px-4 py-3 font-normal">Contato principal</th>
+                </>
+              )}
               <th className="px-4 py-3 font-normal">WhatsApp/Telefone</th>
               <th className="px-4 py-3 font-normal">E-mail</th>
-              <th className="px-4 py-3 font-normal">CNPJ</th>
-              <th className="px-4 py-3 font-normal">CEP</th>
-              <th className="px-4 py-3 font-normal">Site</th>
-              <th className="px-4 py-3 font-normal">Instagram</th>
-              <th className="px-4 py-3 font-normal">Google Meu Negócio</th>
-              <th className="px-4 py-3 font-normal">Outra rede social</th>
-              <th className="px-4 py-3 font-normal">Link (bio)</th>
-              <th className="px-4 py-3 font-normal">Oportunidades</th>
+              {!isB2C && (
+                <>
+                  <th className="px-4 py-3 font-normal">CNPJ</th>
+                  <th className="px-4 py-3 font-normal">CEP</th>
+                </>
+              )}
+              {showOnline && (
+                <>
+                  <th className="px-4 py-3 font-normal">Site</th>
+                  <th className="px-4 py-3 font-normal">Instagram</th>
+                  <th className="px-4 py-3 font-normal">Google Meu Negócio</th>
+                  <th className="px-4 py-3 font-normal">Outra rede social</th>
+                  <th className="px-4 py-3 font-normal">Link (bio)</th>
+                </>
+              )}
+              {!isB2C && <th className="px-4 py-3 font-normal">Oportunidades</th>}
               <th className="px-4 py-3 font-normal">Etapa / próxima ação</th>
               <th className="px-4 py-3 font-normal"></th>
             </tr>
@@ -280,7 +311,7 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
             {companies.length === 0 && (
               <tr>
                 <td colSpan={15} className="px-4 py-8 text-center text-muted">
-                  Nenhuma empresa cadastrada ainda.
+                  {isB2C ? "Nenhum contato cadastrado ainda." : "Nenhuma empresa cadastrada ainda."}
                 </td>
               </tr>
             )}
@@ -295,38 +326,43 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
                     aria-label={`Selecionar ${c.name}`}
                   />
                 </td>
-                <td className="px-4 py-3 text-ink">
-                  <button
-                    type="button"
-                    onClick={() => setEditingCompany(c)}
-                    className="block break-words text-left hover:text-brand hover:underline"
-                    title="Clique pra editar"
-                  >
-                    {c.name}
-                  </button>
-                  {(c.segment || c.city) && (
-                    <span className="block break-words text-xs text-muted">
-                      {[c.segment, c.city].filter(Boolean).join(" · ")}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.primaryContact?.name ?? "—"}
-                  {c.contactCount > 1 && (
-                    <span className="ml-1 text-xs text-muted">+{c.contactCount - 1}</span>
-                  )}
-                  {c.primaryContact?.role_title && (
-                    <span className="block text-xs text-muted">
-                      {c.primaryContact.role_title}
-                    </span>
-                  )}
-                </td>
+                {isB2C ? (
+                  <td className="px-4 py-3 text-ink">
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(c)}
+                      className="block break-words text-left hover:text-brand hover:underline"
+                      title="Clique pra editar"
+                    >
+                      {c.primaryContact?.name ?? c.name}
+                    </button>
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-4 py-3 text-ink">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(c)}
+                        className="block break-words text-left hover:text-brand hover:underline"
+                        title="Clique pra editar"
+                      >
+                        {c.name}
+                      </button>
+                      {(c.segment || c.city) && (
+                        <span className="block break-words text-xs text-muted">{[c.segment, c.city].filter(Boolean).join(" · ")}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 break-words text-muted">
+                      {c.primaryContact?.name ?? "—"}
+                      {c.contactCount > 1 && <span className="ml-1 text-xs text-muted">+{c.contactCount - 1}</span>}
+                      {c.primaryContact?.role_title && <span className="block text-xs text-muted">{c.primaryContact.role_title}</span>}
+                    </td>
+                  </>
+                )}
                 <td className="px-4 py-3 break-words text-muted">
                   {c.primaryContact?.whatsapp || c.primaryContact?.phone ? (
                     <ExternalLink
-                      href={whatsappLink(
-                        (c.primaryContact?.whatsapp ?? c.primaryContact?.phone) as string
-                      )}
+                      href={whatsappLink((c.primaryContact?.whatsapp ?? c.primaryContact?.phone) as string)}
                       label={c.primaryContact?.whatsapp ?? c.primaryContact?.phone ?? undefined}
                     />
                   ) : (
@@ -334,28 +370,28 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
                   )}
                 </td>
                 <td className="px-4 py-3 break-words text-muted">{c.primaryContact?.email ?? "—"}</td>
-                <td className="px-4 py-3 break-words text-muted">{c.cnpj ?? "—"}</td>
-                <td className="px-4 py-3 break-words text-muted">{c.postalCode ?? "—"}</td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.website ? <ExternalLink href={c.website} /> : "—"}
-                </td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.instagram ? (
-                    <ExternalLink href={instagramLink(c.instagram)} label={c.instagram} />
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.googleBusinessUrl ? <ExternalLink href={c.googleBusinessUrl} label="Ver" /> : "—"}
-                </td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.otherSocialUrl ? <ExternalLink href={c.otherSocialUrl} label="Ver" /> : "—"}
-                </td>
-                <td className="px-4 py-3 break-words text-muted">
-                  {c.bioLink ? <ExternalLink href={c.bioLink} label="Ver" /> : "—"}
-                </td>
-                <td className="px-4 py-3 text-muted">{c.opportunityCount}</td>
+                {!isB2C && (
+                  <>
+                    <td className="px-4 py-3 break-words text-muted">{c.cnpj ?? "—"}</td>
+                    <td className="px-4 py-3 break-words text-muted">{c.postalCode ?? "—"}</td>
+                  </>
+                )}
+                {showOnline && (
+                  <>
+                    <td className="px-4 py-3 break-words text-muted">{c.website ? <ExternalLink href={c.website} /> : "—"}</td>
+                    <td className="px-4 py-3 break-words text-muted">
+                      {c.instagram ? <ExternalLink href={instagramLink(c.instagram)} label={c.instagram} /> : "—"}
+                    </td>
+                    <td className="px-4 py-3 break-words text-muted">
+                      {c.googleBusinessUrl ? <ExternalLink href={c.googleBusinessUrl} label="Ver" /> : "—"}
+                    </td>
+                    <td className="px-4 py-3 break-words text-muted">
+                      {c.otherSocialUrl ? <ExternalLink href={c.otherSocialUrl} label="Ver" /> : "—"}
+                    </td>
+                    <td className="px-4 py-3 break-words text-muted">{c.bioLink ? <ExternalLink href={c.bioLink} label="Ver" /> : "—"}</td>
+                  </>
+                )}
+                {!isB2C && <td className="px-4 py-3 text-muted">{c.opportunityCount}</td>}
                 <td className="px-4 py-3 text-muted">
                   {c.stageName ? (
                     <div className="space-y-0.5">
@@ -382,11 +418,7 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
                         title="Registra a tentativa de contato no Funil sem precisar abrir o card"
                         className="text-xs text-muted transition hover:text-brand disabled:opacity-50"
                       >
-                        {attemptPendingId === c.id
-                          ? "Registrando..."
-                          : attemptDoneId === c.id
-                            ? "✓ Registrado"
-                            : "Tentativa de contato"}
+                        {attemptPendingId === c.id ? "Registrando..." : attemptDoneId === c.id ? "✓ Registrado" : "Tentativa de contato"}
                       </button>
                     ) : c.openOpportunityCount > 1 ? (
                       <span
@@ -396,27 +428,21 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
                         Tentativa de contato
                       </span>
                     ) : (
-                      <span
-                        className="text-xs text-muted opacity-50"
-                        title="Sem oportunidade aberta no Funil pra essa empresa"
-                      >
+                      <span className="text-xs text-muted opacity-50" title="Sem oportunidade aberta no Funil pra essa empresa">
                         Tentativa de contato
                       </span>
                     )}
                     {c.internalNotes && (
-                      <button
-                        onClick={() => setNotesOpen(c.id)}
-                        title="Ver observação interna"
-                        className="text-xs text-brand hover:opacity-80"
-                      >
+                      <button onClick={() => setNotesOpen(c.id)} title="Ver observação interna" className="text-xs text-brand hover:opacity-80">
                         Nota
                       </button>
                     )}
                     <button
-                      onClick={() => setEditingCompany(c)}
-                      className="text-xs text-muted transition hover:text-brand"
+                      onClick={() => handleEdit(c)}
+                      disabled={loadingEdit === c.id}
+                      className="text-xs text-muted transition hover:text-brand disabled:opacity-50"
                     >
-                      Editar
+                      {loadingEdit === c.id ? "Abrindo..." : "Editar"}
                     </button>
                     <button
                       onClick={() => handleDelete(c)}
@@ -456,7 +482,15 @@ export function ContatosEmpresasList({ companies }: { companies: CompanyRow[] })
         </div>
       )}
 
-      {showForm && <CompanyContactModal onClose={() => setShowForm(false)} />}
+      {showForm && <OpportunityModal opportunity={null} stages={stages} teamMembers={teamMembers} onClose={() => setShowForm(false)} />}
+      {openedCard && (
+        <OpportunityModal
+          opportunity={openedCard.opportunity}
+          stages={openedCard.stages}
+          teamMembers={teamMembers}
+          onClose={() => setOpenedCard(null)}
+        />
+      )}
       {editingCompany && (
         <CompanyContactModal company={editingCompany} onClose={() => setEditingCompany(null)} />
       )}

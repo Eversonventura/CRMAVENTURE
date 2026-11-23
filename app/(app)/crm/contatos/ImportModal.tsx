@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import { confirmImport } from "./actions";
+import { useCrmSettings } from "../CrmSettingsContext";
 import {
   SYSTEM_FIELDS,
   parseImportFileClient,
@@ -13,6 +14,7 @@ import {
 type Step = "upload" | "mapping" | "done";
 
 export function ImportModal({ onClose }: { onClose: () => void }) {
+  const isB2C = useCrmSettings().businessModel === "b2c";
   const [step, setStep] = useState<Step>("upload");
   const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
   const [mapping, setMapping] = useState<(SystemFieldKey | "")[]>([]);
@@ -54,7 +56,8 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
     });
   }
 
-  const companyMapped = mapping.includes("company_name");
+  // B2C: o cliente é a pessoa, então basta mapear o nome do contato.
+  const companyMapped = mapping.includes("company_name") || (isB2C && mapping.includes("contact_name"));
 
   return (
     <ModalBackdrop dirty={step === "mapping"} onClose={onClose} className="bg-ink/40 p-3">
@@ -142,7 +145,7 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
 
             {!companyMapped && (
               <p className="text-sm text-brand">
-                Mapeie uma coluna pra "Nome da empresa" — é obrigatório.
+                {isB2C ? "Mapeie uma coluna pra \"Nome do contato\" — é obrigatório." : "Mapeie uma coluna pra \"Nome da empresa\" — é obrigatório."}
               </p>
             )}
             {uploadError && <p className="text-sm text-brand">{uploadError}</p>}

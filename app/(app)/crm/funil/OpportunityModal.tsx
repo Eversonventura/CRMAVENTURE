@@ -14,6 +14,8 @@ import { ACQUISITION_CHANNELS, TEMPERATURE_LABELS, type CrmStage, type TeamMembe
 import type { FunilOpportunityRow } from "./FunilBoard";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { whatsappLink, instagramLink } from "../linkUtils";
+import { useCrmSettings } from "../CrmSettingsContext";
+import { showCompanyOnlineFields } from "../business";
 
 // Abre o link (WhatsApp/Instagram) numa aba nova, sem disparar o
 // "dirty" do formulário nem submeter nada — só ao lado do campo,
@@ -96,6 +98,12 @@ export function OpportunityModal({
   teamMembers: TeamMemberOption[];
   onClose: () => void;
 }) {
+  const settings = useCrmSettings();
+  // B2C: o cliente é a pessoa (sem empresa); B2B: empresa + contato. Redes sociais e site
+  // da empresa só para agência de marketing.
+  const isB2C = settings.businessModel === "b2c";
+  const showOnline = showCompanyOnlineFields(settings);
+  const [contactName, setContactName] = useState(opportunity?.contactName ?? opportunity?.companyName ?? "");
   const isEdit = !!opportunity;
   const action = isEdit ? updateOpportunityAction : createOpportunityAction;
   const [state, formAction, pending] = useActionState<CrmFormState, FormData>(action, {});
@@ -140,127 +148,117 @@ export function OpportunityModal({
               </>
             )}
 
-          <div>
-            <h3 className="text-sm font-medium text-ink">Dados da empresa</h3>
-            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Nome da empresa *">
-                <input
-                  name="company_name"
-                  required
-                  defaultValue={opportunity?.companyName ?? ""}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Site">
-                <input name="website" defaultValue={opportunity?.website ?? ""} className={inputClass} />
-              </Field>
-              <Field label="Segmento">
-                <input name="segment" defaultValue={opportunity?.segment ?? ""} className={inputClass} />
-              </Field>
-              <Field label="Cidade">
-                <input name="city" defaultValue={opportunity?.city ?? ""} className={inputClass} />
-              </Field>
-              <Field label="Nº de funcionários">
-                <input
-                  name="employee_count"
-                  defaultValue={opportunity?.employeeCount ?? ""}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Faturamento aproximado">
-                <input
-                  name="approx_revenue"
-                  defaultValue={opportunity?.approxRevenue ?? ""}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Instagram">
-                <input
-                  name="instagram"
-                  placeholder="@usuario"
-                  defaultValue={opportunity?.instagram ?? ""}
-                  className={inputClass}
-                />
-                {opportunity?.instagram && (
-                  <QuickLink href={instagramLink(opportunity.instagram)} label="Abrir Instagram" />
+          {/* ---------- B2B: empresa + contato ---------- */}
+          {!isB2C && (
+            <div>
+              <h3 className="text-sm font-medium text-ink">Dados da empresa</h3>
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Nome da empresa *">
+                  <input name="company_name" required defaultValue={opportunity?.companyName ?? ""} className={inputClass} />
+                </Field>
+                <Field label="Segmento">
+                  <input name="segment" defaultValue={opportunity?.segment ?? ""} className={inputClass} />
+                </Field>
+                <Field label="Cidade">
+                  <input name="city" defaultValue={opportunity?.city ?? ""} className={inputClass} />
+                </Field>
+                <Field label="Nº de funcionários">
+                  <input name="employee_count" defaultValue={opportunity?.employeeCount ?? ""} className={inputClass} />
+                </Field>
+                <Field label="Faturamento aproximado">
+                  <input name="approx_revenue" defaultValue={opportunity?.approxRevenue ?? ""} className={inputClass} />
+                </Field>
+                <Field label="CNPJ">
+                  <input name="cnpj" defaultValue={opportunity?.companyExtra?.cnpj ?? ""} className={inputClass} />
+                </Field>
+                <Field label="CEP">
+                  <input name="postal_code" defaultValue={opportunity?.companyExtra?.postal_code ?? ""} className={inputClass} />
+                </Field>
+                {showOnline && (
+                  <>
+                    <Field label="Site">
+                      <input name="website" defaultValue={opportunity?.website ?? ""} className={inputClass} />
+                    </Field>
+                    <Field label="Instagram">
+                      <input name="instagram" placeholder="@usuario" defaultValue={opportunity?.instagram ?? ""} className={inputClass} />
+                      {opportunity?.instagram && <QuickLink href={instagramLink(opportunity.instagram)} label="Abrir Instagram" />}
+                    </Field>
+                    <Field label="Google Meu Negócio">
+                      <input
+                        name="google_business_url"
+                        placeholder="https://"
+                        defaultValue={opportunity?.companyExtra?.google_business_url ?? ""}
+                        className={inputClass}
+                      />
+                      {opportunity?.companyExtra?.google_business_url && (
+                        <QuickLink href={opportunity.companyExtra.google_business_url} label="Abrir Google Meu Negócio" />
+                      )}
+                    </Field>
+                    <Field label="Outra rede social">
+                      <input
+                        name="other_social_url"
+                        placeholder="https://"
+                        defaultValue={opportunity?.companyExtra?.other_social_url ?? ""}
+                        className={inputClass}
+                      />
+                      {opportunity?.companyExtra?.other_social_url && (
+                        <QuickLink href={opportunity.companyExtra.other_social_url} label="Abrir link" />
+                      )}
+                    </Field>
+                    <Field label="Link (bio/linktree)">
+                      <input
+                        name="bio_link"
+                        placeholder="https://"
+                        defaultValue={opportunity?.companyExtra?.bio_link ?? ""}
+                        className={inputClass}
+                      />
+                      {opportunity?.companyExtra?.bio_link && <QuickLink href={opportunity.companyExtra.bio_link} label="Abrir link" />}
+                    </Field>
+                  </>
                 )}
-              </Field>
-              <Field label="CNPJ">
-                <input name="cnpj" defaultValue={opportunity?.companyExtra?.cnpj ?? ""} className={inputClass} />
-              </Field>
-              <Field label="CEP">
-                <input name="postal_code" defaultValue={opportunity?.companyExtra?.postal_code ?? ""} className={inputClass} />
-              </Field>
-              <Field label="Google Meu Negócio">
-                <input
-                  name="google_business_url"
-                  placeholder="https://"
-                  defaultValue={opportunity?.companyExtra?.google_business_url ?? ""}
-                  className={inputClass}
-                />
-                {opportunity?.companyExtra?.google_business_url && (
-                  <QuickLink href={opportunity.companyExtra.google_business_url} label="Abrir Google Meu Negócio" />
-                )}
-              </Field>
-              <Field label="Outra rede social">
-                <input
-                  name="other_social_url"
-                  placeholder="https://"
-                  defaultValue={opportunity?.companyExtra?.other_social_url ?? ""}
-                  className={inputClass}
-                />
-                {opportunity?.companyExtra?.other_social_url && (
-                  <QuickLink href={opportunity.companyExtra.other_social_url} label="Abrir link" />
-                )}
-              </Field>
-              <Field label="Link (bio/linktree)">
-                <input
-                  name="bio_link"
-                  placeholder="https://"
-                  defaultValue={opportunity?.companyExtra?.bio_link ?? ""}
-                  className={inputClass}
-                />
-                {opportunity?.companyExtra?.bio_link && <QuickLink href={opportunity.companyExtra.bio_link} label="Abrir link" />}
-              </Field>
+              </div>
+              <div className="mt-3">
+                <Field label="Observação interna (só a equipe vê)">
+                  <textarea
+                    name="internal_notes"
+                    rows={3}
+                    defaultValue={opportunity?.companyExtra?.internal_notes ?? ""}
+                    className={`${inputClass} resize-y`}
+                  />
+                </Field>
+              </div>
             </div>
-            <div className="mt-3">
-              <Field label="Observação interna (só a equipe vê)">
-                <textarea
-                  name="internal_notes"
-                  rows={3}
-                  defaultValue={opportunity?.companyExtra?.internal_notes ?? ""}
-                  className={`${inputClass} resize-y`}
-                />
-              </Field>
-            </div>
-          </div>
+          )}
 
           <div>
             <h3 className="text-sm font-medium text-ink">Dados do contato</h3>
             <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Nome do contato">
-                <input
-                  name="contact_name"
-                  defaultValue={opportunity?.contactName ?? ""}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Cargo">
-                <input name="contact_role" defaultValue={opportunity?.contactRole ?? ""} className={inputClass} />
-              </Field>
-              <Field label="Telefone">
-                <input
-                  name="contact_phone"
-                  defaultValue={opportunity?.contactPhone ?? ""}
-                  className={inputClass}
-                />
-              </Field>
+              {isB2C ? (
+                <>
+                  {/* B2C: a pessoa é o cliente; a "empresa" interna recebe o mesmo nome. */}
+                  <input type="hidden" name="company_name" value={contactName} />
+                  <Field label="Nome do contato *">
+                    <input
+                      name="contact_name"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      className={inputClass}
+                    />
+                  </Field>
+                </>
+              ) : (
+                <Field label="Nome do contato">
+                  <input name="contact_name" defaultValue={opportunity?.contactName ?? ""} className={inputClass} />
+                </Field>
+              )}
+              {!isB2C && (
+                <Field label="Cargo">
+                  <input name="contact_role" defaultValue={opportunity?.contactRole ?? ""} className={inputClass} />
+                </Field>
+              )}
               <Field label="WhatsApp">
-                <input
-                  name="contact_whatsapp"
-                  defaultValue={opportunity?.contactWhatsapp ?? ""}
-                  className={inputClass}
-                />
+                <input name="contact_whatsapp" defaultValue={opportunity?.contactWhatsapp ?? ""} className={inputClass} />
                 {(opportunity?.contactWhatsapp || opportunity?.contactPhone) && (
                   <QuickLink
                     href={whatsappLink((opportunity.contactWhatsapp ?? opportunity.contactPhone) as string)}
@@ -269,12 +267,10 @@ export function OpportunityModal({
                 )}
               </Field>
               <Field label="E-mail">
-                <input
-                  name="contact_email"
-                  type="email"
-                  defaultValue={opportunity?.contactEmail ?? ""}
-                  className={inputClass}
-                />
+                <input name="contact_email" type="email" defaultValue={opportunity?.contactEmail ?? ""} className={inputClass} />
+              </Field>
+              <Field label="Telefone">
+                <input name="contact_phone" defaultValue={opportunity?.contactPhone ?? ""} className={inputClass} />
               </Field>
               <Field label="Preferência de contato">
                 <input
@@ -285,44 +281,43 @@ export function OpportunityModal({
                 />
               </Field>
             </div>
+            {isB2C && (
+              <div className="mt-3">
+                <Field label="Observação interna (só a equipe vê)">
+                  <textarea
+                    name="internal_notes"
+                    rows={3}
+                    defaultValue={opportunity?.companyExtra?.internal_notes ?? ""}
+                    className={`${inputClass} resize-y`}
+                  />
+                </Field>
+              </div>
+            )}
           </div>
 
           <div>
             <h3 className="text-sm font-medium text-ink">Dados comerciais</h3>
             <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Serviço de interesse">
-                <input
-                  name="service_interest"
-                  defaultValue={opportunity?.serviceInterest ?? ""}
-                  className={inputClass}
-                />
-              </Field>
+              {!isB2C && (
+                <Field label="Serviço de interesse">
+                  <input name="service_interest" defaultValue={opportunity?.serviceInterest ?? ""} className={inputClass} />
+                </Field>
+              )}
               <Field label="Valor estimado (R$)">
-                <input
-                  name="estimated_value"
-                  type="number"
-                  step="0.01"
-                  defaultValue={opportunity?.estimatedValue ?? ""}
-                  className={inputClass}
-                />
+                <input name="estimated_value" type="number" step="0.01" defaultValue={opportunity?.estimatedValue ?? ""} className={inputClass} />
               </Field>
-              <Field label="Probabilidade (%)">
-                <input name="close_probability" defaultValue={opportunity?.details?.close_probability ?? ""} type="number" min="0" max="100" className={inputClass} />
-              </Field>
-              <Field label="Previsão de fechamento">
-                <input
-                  name="expected_close_date"
-                  type="date"
-                  defaultValue={opportunity?.expectedCloseDate ?? ""}
-                  className={inputClass}
-                />
-              </Field>
+              {!isB2C && (
+                <>
+                  <Field label="Probabilidade (%)">
+                    <input name="close_probability" defaultValue={opportunity?.details?.close_probability ?? ""} type="number" min="0" max="100" className={inputClass} />
+                  </Field>
+                  <Field label="Previsão de fechamento">
+                    <input name="expected_close_date" type="date" defaultValue={opportunity?.expectedCloseDate ?? ""} className={inputClass} />
+                  </Field>
+                </>
+              )}
               <Field label="Responsável">
-                <select
-                  name="responsible_id"
-                  defaultValue={opportunity?.responsibleId ?? ""}
-                  className={inputClass}
-                >
+                <select name="responsible_id" defaultValue={opportunity?.responsibleId ?? ""} className={inputClass}>
                   <option value="">Selecione...</option>
                   {teamMembers.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -333,9 +328,9 @@ export function OpportunityModal({
               </Field>
               <Field label="Etapa">
                 <select name="stage_id" defaultValue={opportunity?.stageId ?? stages[0]?.id} className={inputClass}>
-                  {stages.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
+                  {stages.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.name}
                     </option>
                   ))}
                 </select>
@@ -373,9 +368,11 @@ export function OpportunityModal({
               <Field label="Quem decide">
                 <input name="decision_maker" defaultValue={opportunity?.details?.decision_maker ?? ""} className={inputClass} />
               </Field>
-              <Field label="Prazo pra começar">
-                <input name="start_deadline" defaultValue={opportunity?.details?.start_deadline ?? ""} className={inputClass} />
-              </Field>
+              {!isB2C && (
+                <Field label="Prazo pra começar">
+                  <input name="start_deadline" defaultValue={opportunity?.details?.start_deadline ?? ""} className={inputClass} />
+                </Field>
+              )}
             </div>
           </div>
 

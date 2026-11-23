@@ -5,23 +5,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCompany, findOrCreateContact, type CrmFormState } from "../actions";
 import { resolveContactName } from "../contactUtils";
+import { COMPANY_KEYS, pickContactFields, pickStrings } from "../form-fields";
+import { getCrmSettings } from "../settings";
 import type { SystemFieldKey } from "./import-parse";
-
-function companyFieldsFromForm(formData: FormData) {
-  const str = (key: string) => (formData.get(key) as string)?.trim() || null;
-  return {
-    website: str("website"),
-    segment: str("segment"),
-    city: str("city"),
-    internal_notes: str("internal_notes"),
-    instagram: str("instagram"),
-    postal_code: str("postal_code"),
-    cnpj: str("cnpj"),
-    google_business_url: str("google_business_url"),
-    other_social_url: str("other_social_url"),
-    bio_link: str("bio_link"),
-  };
-}
 
 // Etapa de entrada dos leads novos: o pipeline pode ter mais de uma etapa
 // com role `lead` (ex.: "Desbrava"); leads cadastrados entram em "Novo lead".
@@ -36,63 +22,7 @@ async function findNewLeadStage(supabase: Awaited<ReturnType<typeof createClient
   return stages.find((st) => st.name.trim().toLowerCase() === "novo lead") ?? stages[0] ?? null;
 }
 
-export async function createCompanyContactAction(
-  _prevState: CrmFormState,
-  formData: FormData
-): Promise<CrmFormState> {
-  const companyName = (formData.get("company_name") as string)?.trim();
-  if (!companyName) return { error: "Nome da empresa é obrigatório." };
-
-  const supabase = await createClient();
-
-  try {
-    const companyId = await findOrCreateCompany(supabase, companyName, companyFieldsFromForm(formData));
-
-    const contactName = resolveContactName(formData, companyName);
-    const contactId = contactName
-      ? await findOrCreateContact(supabase, companyId, contactName, {
-          role_title: (formData.get("contact_role") as string)?.trim() || null,
-          phone: (formData.get("contact_phone") as string)?.trim() || null,
-          whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
-          email: (formData.get("contact_email") as string)?.trim() || null,
-        })
-      : null;
-
-    // Contato novo vira lead: entra em "Novo lead" no funil, a menos que a
-    // empresa já tenha uma oportunidade aberta.
-    const { count } = await supabase
-      .from("crm_opportunities")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("status", "aberta");
-    if ((count ?? 0) === 0) {
-      const defaultPipelineId = await getDefaultPipelineId(supabase);
-      const stage = defaultPipelineId ? await findNewLeadStage(supabase, defaultPipelineId) : null;
-      if (!stage) return { error: "Etapa de entrada (Novo lead) não encontrada." };
-      const { error } = await supabase.from("crm_opportunities").insert({
-        company_id: companyId,
-        contact_id: contactId,
-        stage_id: stage.id,
-        acquisition_channel: "Outro",
-        first_touch_channel: "Outro",
-        last_touch_channel: "Outro",
-        search_reason: "Lead cadastrado em Contatos e Empresas.",
-      });
-      if (error) return { error: error.message };
-    }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Erro inesperado." };
-  }
-
-  revalidatePath("/crm/contatos");
-  revalidatePath("/crm/funil");
-  revalidatePath("/crm/diario");
-  revalidatePath("/crm/visao-geral");
-  return {};
-}
-
-// Edição: diferente de createCompanyContactAction (que acha/cria por
-// nome), aqui já se sabe exatamente qual empresa/contato — atualiza
+// Edição simples (contato sem oportunidade): já se sabe exatamente qual empresa/contato — atualiza
 // direto pelo id, sem risco de casar com a linha errada por nome
 // parecido.
 export async function updateCompanyContactAction(
@@ -109,7 +39,7 @@ export async function updateCompanyContactAction(
 
   const { error: companyError } = await supabase
     .from("crm_companies")
-    .update({ name: companyName, ...companyFieldsFromForm(formData) })
+    .update({ name: companyName, ...pickStrings(formData, COMPANY_KEYS) })
     .eq("id", companyId);
   if (companyError) return { error: companyError.message };
 
@@ -121,12 +51,7 @@ export async function updateCompanyContactAction(
   // telefone por engano.
   const typedContactName = ((formData.get("contact_name") as string) || "").trim();
   const contactName = contactId ? typedContactName : resolveContactName(formData, companyName);
-  const contactFields = {
-    role_title: (formData.get("contact_role") as string)?.trim() || null,
-    phone: (formData.get("contact_phone") as string)?.trim() || null,
-    whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
-    email: (formData.get("contact_email") as string)?.trim() || null,
-  };
+  const contactFields = pickContactFields(formData);
 
   if (contactId) {
     if (contactName) {
@@ -178,9 +103,10 @@ export async function confirmImport(
 ): Promise<{ error?: string; created: number; skipped: number }> {
   const supabase = await createClient();
 
-  const companyIdx = mapping.indexOf("company_name");
-  if (companyIdx === -1) {
-    return { error: "Nenhuma coluna mapeada pra Nome da empresa.", created: 0, skipped: 0 };
+  // B2B precisa de "Nome da empresa"; em B2C (sem empresa) vale o nome do contato.
+  const isB2C = (await getCrmSettings()).businessModel === "b2c";
+  if (mapping.indexOf("company_name") === -1 && !(isB2C && mapping.indexOf("contact_name") !== -1)) {
+    return { error: isB2C ? "Nenhuma coluna mapeada pra Nome do contato." : "Nenhuma coluna mapeada pra Nome da empresa.", created: 0, skipped: 0 };
   }
 
   // Etapa de entrada = a de role `lead` do pipeline padrão (o nome pode
@@ -198,7 +124,7 @@ export async function confirmImport(
   let skipped = 0;
 
   for (const row of rows) {
-    const companyName = get(row, "company_name");
+    const companyName = get(row, "company_name") || (isB2C ? get(row, "contact_name") : "");
     if (!companyName) {
       skipped++;
       continue;

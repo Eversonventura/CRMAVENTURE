@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
 import { getCrmAccessContext } from "./lib";
 import { resolveContactName } from "./contactUtils";
+import { COMPANY_KEYS, pickContactFields, pickOpportunityFields, pickStrings } from "./form-fields";
 import { logCrmActivity } from "./activity";
 import { cancelActiveCadences, startCadence, type CadenceType } from "./cadence";
 import { sendCrmEmail } from "./email";
@@ -127,56 +128,6 @@ export async function findOrCreateContact(
   return created.id;
 }
 
-function readCompanyExtraFields(formData: FormData) {
-  const str = (key: string) => (formData.get(key) as string)?.trim() || null;
-  return {
-    cnpj: str("cnpj"),
-    postal_code: str("postal_code"),
-    google_business_url: str("google_business_url"),
-    other_social_url: str("other_social_url"),
-    bio_link: str("bio_link"),
-    internal_notes: str("internal_notes"),
-  };
-}
-
-function readOpportunityFields(formData: FormData) {
-  const num = (key: string) => {
-    const v = formData.get(key) as string;
-    return v ? Number(v) : null;
-  };
-  const str = (key: string) => (formData.get(key) as string)?.trim() || null;
-
-  return {
-    service_interest: str("service_interest"),
-    estimated_value: num("estimated_value"),
-    close_probability: num("close_probability"),
-    expected_close_date: str("expected_close_date"),
-    responsible_id: str("responsible_id"),
-    temperature: str("temperature"),
-    priority: str("priority"),
-    search_reason: str("search_reason"),
-    main_problem: str("main_problem"),
-    desired_objective: str("desired_objective"),
-    available_budget: str("available_budget"),
-    decision_maker: str("decision_maker"),
-    start_deadline: str("start_deadline"),
-    acquisition_channel: str("acquisition_channel"),
-    campaign: str("campaign"),
-    event_name: str("event_name"),
-    ad: str("ad"),
-    form_name: str("form_name"),
-    landing_page: str("landing_page"),
-    referred_by: str("referred_by"),
-    referral_related_client: str("referral_related_client"),
-    referral_type: str("referral_type"),
-    referral_date: str("referral_date"),
-    referral_result: str("referral_result"),
-    ad_platform: str("ad_platform"),
-    ad_set: str("ad_set"),
-    keyword: str("keyword"),
-  };
-}
-
 export async function createOpportunityAction(
   _prevState: CrmFormState,
   formData: FormData
@@ -187,31 +138,17 @@ export async function createOpportunityAction(
   const supabase = await createClient();
 
   try {
-    // Empresa nova: só grava os extras preenchidos (não apaga dados de uma
-    // empresa que já existia com o mesmo nome).
-    const extraOnCreate = Object.fromEntries(Object.entries(readCompanyExtraFields(formData)).filter(([, v]) => v !== null));
-    const companyId = await findOrCreateCompany(supabase, companyName, {
-      ...extraOnCreate,
-      website: (formData.get("website") as string)?.trim() || null,
-      segment: (formData.get("segment") as string)?.trim() || null,
-      city: (formData.get("city") as string)?.trim() || null,
-      employee_count: (formData.get("employee_count") as string)?.trim() || null,
-      approx_revenue: (formData.get("approx_revenue") as string)?.trim() || null,
-      instagram: (formData.get("instagram") as string)?.trim() || null,
-    });
+    // Só os campos que o formulário mostrou, e só os preenchidos: criar não apaga
+    // dados de uma empresa/contato que já existia com o mesmo nome.
+    const companyId = await findOrCreateCompany(supabase, companyName, pickStrings(formData, COMPANY_KEYS, { skipEmpty: true }));
 
     const contactName = resolveContactName(formData, companyName);
-    const contactId = await findOrCreateContact(supabase, companyId, contactName, {
-      role_title: (formData.get("contact_role") as string)?.trim() || null,
-      phone: (formData.get("contact_phone") as string)?.trim() || null,
-      whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
-      email: (formData.get("contact_email") as string)?.trim() || null,
-      contact_preference: (formData.get("contact_preference") as string)?.trim() || null,
-    });
+    const contactId = await findOrCreateContact(supabase, companyId, contactName, pickContactFields(formData, { skipEmpty: true }));
 
-    const fields = readOpportunityFields(formData);
+    const fields = pickOpportunityFields(formData, { skipEmpty: true });
     const stageId = formData.get("stage_id") as string;
     if (!stageId) return { error: "Selecione a etapa." };
+    const channel = (fields.acquisition_channel as string | null | undefined) ?? null;
 
     const { data: created, error } = await supabase
       .from("crm_opportunities")
@@ -219,8 +156,8 @@ export async function createOpportunityAction(
         company_id: companyId,
         contact_id: contactId,
         stage_id: stageId,
-        first_touch_channel: fields.acquisition_channel,
-        last_touch_channel: fields.acquisition_channel,
+        first_touch_channel: channel,
+        last_touch_channel: channel,
         ...fields,
       })
       .select("id")
@@ -259,17 +196,8 @@ export async function updateOpportunityAction(
       // atualiza a linha existente direto — só usa a busca por nome
       // (findOrCreateCompany/findOrCreateContact) quando ainda não
       // existe empresa/contato vinculado.
-      const companyFields = {
-        website: (formData.get("website") as string)?.trim() || null,
-        segment: (formData.get("segment") as string)?.trim() || null,
-        city: (formData.get("city") as string)?.trim() || null,
-        employee_count: (formData.get("employee_count") as string)?.trim() || null,
-        approx_revenue: (formData.get("approx_revenue") as string)?.trim() || null,
-        instagram: (formData.get("instagram") as string)?.trim() || null,
-        // Demais dados da empresa (iguais aos de Contatos & Empresas): o card
-        // agora mostra todos, então podem ser gravados como estão.
-        ...readCompanyExtraFields(formData),
-      };
+      // Só os campos que o formulário mostrou (B2C e segmentos sem redes sociais não têm todos).
+      const companyFields = pickStrings(formData, COMPANY_KEYS);
       const existingCompanyId = (formData.get("company_id") as string) || null;
       let companyId: string;
       if (existingCompanyId) {
@@ -283,13 +211,7 @@ export async function updateOpportunityAction(
         companyId = await findOrCreateCompany(supabase, companyName, companyFields);
       }
 
-      const contactFields = {
-        role_title: (formData.get("contact_role") as string)?.trim() || null,
-        phone: (formData.get("contact_phone") as string)?.trim() || null,
-        whatsapp: (formData.get("contact_whatsapp") as string)?.trim() || null,
-        email: (formData.get("contact_email") as string)?.trim() || null,
-        contact_preference: (formData.get("contact_preference") as string)?.trim() || null,
-      };
+      const contactFields = pickContactFields(formData);
       const existingContactId = (formData.get("contact_id") as string) || null;
       // Bug real ("adicionei informações e não tá salvando"): se o
       // vendedor preenchia telefone/WhatsApp/e-mail mas deixava "Nome
@@ -320,7 +242,7 @@ export async function updateOpportunityAction(
         contactId = await findOrCreateContact(supabase, companyId, contactName, contactFields);
       }
 
-      const fields = readOpportunityFields(formData);
+      const fields = pickOpportunityFields(formData);
       const stageId = formData.get("stage_id") as string;
 
       const { data: before } = await supabase
@@ -331,7 +253,8 @@ export async function updateOpportunityAction(
 
       // first_touch_channel nunca muda depois de gravado; last_touch só
       // atualiza quando o canal informado agora é diferente do anterior.
-      const channelChanged = before && before.acquisition_channel !== fields.acquisition_channel;
+      const newChannel = "acquisition_channel" in fields ? ((fields.acquisition_channel as string | null) ?? null) : undefined;
+      const channelChanged = before && newChannel !== undefined && before.acquisition_channel !== newChannel;
 
       const { error } = await supabase
         .from("crm_opportunities")
@@ -340,7 +263,7 @@ export async function updateOpportunityAction(
           contact_id: contactId,
           stage_id: stageId,
           ...fields,
-          ...(channelChanged ? { last_touch_channel: fields.acquisition_channel } : {}),
+          ...(channelChanged ? { last_touch_channel: newChannel } : {}),
         })
         .eq("id", id);
       if (error) return { error: error.message };
