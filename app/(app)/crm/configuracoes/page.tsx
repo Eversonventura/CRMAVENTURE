@@ -26,7 +26,7 @@ export default async function ConfiguracoesPage() {
     supabase.from("crm_stages").select("id, name, pipeline_id, kind, position").order("position"),
     supabase.from("crm_pipelines").select("id, name").order("position"),
     supabase.from("crm_goals").select("metric, target, owner_id"),
-    supabase.from("team_members").select("id, full_name").order("full_name"),
+    supabase.rpc("team_member_picker_options"),
   ]);
 
   // Metas do mês: da equipe (owner nulo) e de vendas por vendedor.
