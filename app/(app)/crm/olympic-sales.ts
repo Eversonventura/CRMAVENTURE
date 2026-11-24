@@ -31,6 +31,8 @@ export function monthlySales(args: {
   month: string; // AAAA-MM
   closedOpps: ClosedOpp[];
   receivableSales: ReceivableSale[];
+  // Meta por contratos: fechamento sem valor também conta (contrato fechado não exige preço).
+  countWithoutValue?: boolean;
 }): SaleEntry[] {
   const { month } = args;
   const entries: SaleEntry[] = [];
@@ -47,7 +49,7 @@ export function monthlySales(args: {
     if (date.slice(0, 7) !== month) continue;
     const monthly = o.monthlyValue && o.monthlyValue > 0 ? o.monthlyValue : null;
     const value = planByOpp.get(o.id)?.saleTotal ?? (o.isRecurring ? monthly : null) ?? o.value ?? monthly ?? 0;
-    if (value <= 0) continue;
+    if (value <= 0 && !args.countWithoutValue) continue;
     entries.push({ key: `opp-${o.id}`, source: "crm", label: "Fechamento no CRM", client: o.company, value, date });
   }
 

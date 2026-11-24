@@ -64,7 +64,7 @@ export async function saveOlympicGoals(values: Record<string, number>): Promise<
 
 // Metas de vendas por vendedor (fechamentos e receita, mensais). Campo vazio
 // (null) remove a meta pessoal daquela pessoa.
-export type MemberSalesGoal = { memberId: string; fechamentos: number | null; receita_fechada: number | null };
+export type MemberSalesGoal = { memberId: string; fechamentos?: number | null; receita_fechada?: number | null };
 
 export async function saveMemberSalesGoals(rows: MemberSalesGoal[]): Promise<{ error?: string }> {
   const access = await getAccessContext();
@@ -79,6 +79,7 @@ export async function saveMemberSalesGoals(rows: MemberSalesGoal[]): Promise<{ e
     if (!valid.has(row.memberId)) return { error: "Pessoa não encontrada nesta conta." };
     for (const metric of SALES_METRICS) {
       const value = row[metric];
+      if (value === undefined) continue; // não mexe (campo escondido no modo contratos)
       if (value !== null && (!Number.isFinite(value) || value < 0)) return { error: "Meta inválida." };
 
       const { data: existing } = await supabase

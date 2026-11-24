@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GOAL_METRICS } from "./goals";
+import type { SalesMode } from "./business";
 import { saveCrmGoals, saveMemberSalesGoals } from "./goal-actions";
 import type { SalesGoalMap } from "./sales-goals";
 
@@ -12,7 +13,9 @@ export function GoalsForm({
   targets,
   members = [],
   memberGoals = {},
+  salesMode = "valor",
 }: {
+  salesMode?: SalesMode;
   targets: Record<string, number>;
   members?: { id: string; name: string }[];
   memberGoals?: SalesGoalMap;
@@ -35,25 +38,44 @@ export function GoalsForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const router = useRouter();
+
+  const byContracts = salesMode === "contratos";
+  // Meta por contratos: sem valores (receita e ticket médio saem); o "Negócios fechados" vira "Contratos fechados".
+  const metrics = GOAL_METRICS.filter((m) => !byContracts || !(m.key === "receita_fechada" || m.key === "ticket_medio")).map((m) => {
+    if (m.key === "fechamentos") return { ...m, label: byContracts ? "Contratos fechados" : "Negócios fechados" };
+    if (m.key === "propostas_apresentadas") return { ...m, label: "Propostas / contratos apresentados" };
+    return m;
+  });
 
   async function save() {
     setBusy(true);
     setError(null);
     setSaved(false);
-    const result = await saveCrmGoals(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v)])));
-    const personalResult =
-      result.error || members.length === 0
-        ? result
-        : await saveMemberSalesGoals(
-            members.map((m) => ({
-              memberId: m.id,
-              fechamentos: personal[m.id].fechamentos.trim() === "" ? null : Number(personal[m.id].fechamentos),
-              receita_fechada: personal[m.id].receita.trim() === "" ? null : Number(personal[m.id].receita),
-            }))
-          );
-    setBusy(false);
-    if (personalResult.error) setError(personalResult.error);
-    else setSaved(true);
+    try {
+      const result = await saveCrmGoals(
+        Object.fromEntries(metrics.map((m) => [m.key, Number(values[m.key])]))
+      );
+      const personalResult =
+        result.error || members.length === 0
+          ? result
+          : await saveMemberSalesGoals(
+              members.map((m) => ({
+                memberId: m.id,
+                fechamentos: personal[m.id].fechamentos.trim() === "" ? null : Number(personal[m.id].fechamentos),
+                ...(byContracts ? {} : { receita_fechada: personal[m.id].receita.trim() === "" ? null : Number(personal[m.id].receita) }),
+              }))
+            );
+      if (personalResult.error) setError(personalResult.error);
+      else {
+        setSaved(true);
+        router.refresh();
+      }
+    } catch {
+      setError("Não foi possível salvar agora. Verifique a conexão e tente de novo.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -63,7 +85,7 @@ export function GoalsForm({
         atrasadas) a lógica inverte. Em períodos maiores, as metas de volume e valor multiplicam (90 dias = 3×).
       </p>
       <div className="mt-4 space-y-2.5 text-sm">
-        {GOAL_METRICS.map((m) => (
+        {metrics.map((m) => (
           <label key={m.key} className="flex items-center justify-between gap-3">
             <span className="text-ink">
               {m.label}
@@ -86,17 +108,17 @@ export function GoalsForm({
         <div className="mt-6 border-t border-border pt-4">
           <h3 className="font-display text-base font-medium text-ink">Metas de vendas por vendedor</h3>
           <p className="mt-1 text-xs text-muted">
-            Fechamentos e receita fechada por mês, para cada pessoa. Deixe em branco para não ter meta pessoal. As metas
+            {byContracts ? "Contratos fechados por mês" : "Fechamentos e receita fechada por mês"}, para cada pessoa. Deixe em branco para não ter meta pessoal. As metas
             de &quot;Negócios fechados&quot; e &quot;Receita fechada&quot; acima são as da equipe.
           </p>
           <div className="mt-3 space-y-2 text-sm">
-            <div className="grid grid-cols-[1fr_5.5rem_7.5rem] gap-2 text-xs text-muted">
+            <div className={`grid ${byContracts ? "grid-cols-[1fr_7rem]" : "grid-cols-[1fr_5.5rem_7.5rem]"} gap-2 text-xs text-muted`}>
               <span>Vendedor</span>
               <span>Fechamentos</span>
               <span>Receita (R$)</span>
             </div>
             {members.map((m) => (
-              <div key={m.id} className="grid grid-cols-[1fr_5.5rem_7.5rem] items-center gap-2">
+              <div key={m.id} className={`grid ${byContracts ? "grid-cols-[1fr_7rem]" : "grid-cols-[1fr_5.5rem_7.5rem]"} items-center gap-2`}>
                 <span className="truncate text-ink">{m.name}</span>
                 <input
                   type="number"
@@ -105,13 +127,15 @@ export function GoalsForm({
                   onChange={(e) => setPersonal({ ...personal, [m.id]: { ...personal[m.id], fechamentos: e.target.value } })}
                   className="rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
                 />
-                <input
-                  type="number"
-                  min={0}
-                  value={personal[m.id].receita}
-                  onChange={(e) => setPersonal({ ...personal, [m.id]: { ...personal[m.id], receita: e.target.value } })}
-                  className="rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
-                />
+                {!byContracts && (
+                  <input
+                    type="number"
+                    min={0}
+                    value={personal[m.id].receita}
+                    onChange={(e) => setPersonal({ ...personal, [m.id]: { ...personal[m.id], receita: e.target.value } })}
+                    className="rounded-lg border border-border bg-surface2 px-2 py-1.5 text-sm text-ink outline-none focus:border-brand"
+                  />
+                )}
               </div>
             ))}
           </div>

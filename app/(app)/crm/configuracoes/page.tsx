@@ -51,6 +51,7 @@ export default async function ConfiguracoesPage() {
       approaches={approaches}
       weekly={goals.weekly_new_leads ?? approaches * 5}
       olympic={readOlympicSettings(goals)}
+      salesMode={settings.salesMode}
       kpiTargets={kpiTargets}
       members={((memberRows as { id: string; full_name: string }[] | null) ?? []).map((m) => ({ id: m.id, name: m.full_name }))}
       memberGoals={memberGoals}

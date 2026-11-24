@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useCrmSettings } from "../CrmSettingsContext";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { addManualActivity, cancelTaskAction } from "../actions";
@@ -123,9 +124,12 @@ function Progress({ done, goal }: { done: number; goal: number }) {
 
 // Vendas do mês da pessoa: fechamentos e receita x meta (pessoal ou, sem ela, da equipe).
 function SalesCard({ sales }: { sales: DiarioData["sales"] }) {
+  const byContracts = useCrmSettings().salesMode === "contratos";
   const items = [
-    { label: "Fechamentos", text: String(sales.closings), value: sales.closings, goal: sales.goalClosings, goalText: (n: number) => String(Math.round(n)) },
-    { label: "Receita fechada", text: money(sales.revenue), value: sales.revenue, goal: sales.goalRevenue, goalText: (n: number) => money(n) },
+    { label: byContracts ? "Contratos fechados" : "Fechamentos", text: String(sales.closings), value: sales.closings, goal: sales.goalClosings, goalText: (n: number) => String(Math.round(n)) },
+    ...(byContracts
+      ? []
+      : [{ label: "Receita fechada", text: money(sales.revenue), value: sales.revenue, goal: sales.goalRevenue, goalText: (n: number) => money(n) }]),
   ];
   return (
     <section className={card}>

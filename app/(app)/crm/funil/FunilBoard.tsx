@@ -20,6 +20,7 @@ import type { CompanyExtra, OpportunityDetails } from "./details";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StageManagerModal } from "./StageManagerModal";
 import { ClosedDealModal } from "./ClosedDealModal";
+import { useCrmSettings } from "../CrmSettingsContext";
 import { PipelineManagerModal, type PipelineOption } from "./PipelineManagerModal";
 import { OpportunityModal } from "./OpportunityModal";
 import { LostOpportunityModal } from "./LostOpportunityModal";
@@ -126,6 +127,7 @@ function OpportunityCard({
     data: { type: "card" },
   });
   const days = daysSince(opp.stageEnteredAt);
+  const showValue = useCrmSettings().salesMode !== "contratos";
 
   return (
     <div
@@ -156,7 +158,7 @@ function OpportunityCard({
         <p className="mt-1 truncate text-xs text-muted">{opp.serviceInterest}</p>
       )}
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-ink">{formatCurrency(opp.estimatedValue)}</span>
+        {showValue ? <span className="text-sm font-medium text-ink">{formatCurrency(opp.estimatedValue)}</span> : <span />}
         {opp.temperature && (
           <StatusPill
             label={TEMPERATURE_LABELS[opp.temperature]}
@@ -194,6 +196,7 @@ function StageColumn({
   onCardClick: (opp: FunilOpportunityRow) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
+  const showValue = useCrmSettings().salesMode !== "contratos";
   const total = opportunities.reduce((sum, o) => sum + (o.estimatedValue ?? 0), 0);
 
   return (
@@ -208,7 +211,7 @@ function StageColumn({
         </div>
         <span className="text-xs text-muted">{opportunities.length}</span>
       </div>
-      <p className="px-1 pb-2 text-[11px] text-muted">{formatCurrency(total)}</p>
+      {showValue && <p className="px-1 pb-2 text-[11px] text-muted">{formatCurrency(total)}</p>}
       <SortableContext items={opportunities.map((o) => o.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className="flex min-h-[40px] flex-1 flex-col gap-2">
           {opportunities.map((opp) => (
@@ -236,6 +239,8 @@ export function FunilBoard({
   canManage: boolean;
 }) {
   const router = useRouter();
+  const byContracts = useCrmSettings().salesMode === "contratos";
+  const [contractMsg, setContractMsg] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const [managing, setManaging] = useState<"stages" | "pipelines" | null>(null);
   const [items, setItems] = useState(opportunities);
@@ -322,7 +327,9 @@ export function FunilBoard({
         );
         setMoveError(result.error);
       } else if (stages.find((st) => st.id === targetStageId)?.kind === "won") {
-        setClosedDeal(opp);
+        // Conta que mede por contratos: fechou, é um contrato fechado — sem pedir valor nem forma de pagamento.
+        if (byContracts) setContractMsg(`Contrato fechado: ${opp.companyName}.`);
+        else setClosedDeal(opp);
       }
     });
   }
@@ -375,6 +382,15 @@ export function FunilBoard({
           </button>
         </div>
       </div>
+
+      {contractMsg && (
+        <p role="status" className="mb-3 flex items-center justify-between gap-3 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+          <span>🎉 {contractMsg}</span>
+          <button type="button" onClick={() => setContractMsg(null)} className="text-xs text-emerald-800/70 hover:text-emerald-900">
+            fechar
+          </button>
+        </p>
+      )}
 
       {moveError && (
         <p className="mb-3 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">

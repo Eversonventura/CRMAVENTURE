@@ -64,7 +64,9 @@ function SalesPanel({
   periodLabel,
   team,
   sellers,
+  showRevenue,
 }: {
+  showRevenue: boolean;
   periodLabel: string;
   team: { count: number; goalCount: number; revenue: number; goalRevenue: number } | null;
   sellers: { id: string; name: string; count: number; revenue: number; goalCount: number | null; goalRevenue: number | null }[];
@@ -72,13 +74,15 @@ function SalesPanel({
   return (
     <section className="mb-4 rounded-xl border border-border bg-surface p-5">
       <h2 className="font-display text-base font-medium text-ink">Vendas e fechamentos</h2>
-      <p className="mt-0.5 text-xs text-muted">{periodLabel} · negócios que chegaram a Fechado e a receita deles, contra a meta.</p>
+      <p className="mt-0.5 text-xs text-muted">{periodLabel} · {showRevenue ? "negócios que chegaram a Fechado e a receita deles, contra a meta." : "contratos fechados contra a meta."}</p>
 
       {team && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {[
-            { label: "Fechamentos da equipe", value: team.count, goal: team.goalCount, text: `${team.count} de ${Math.round(team.goalCount)}` },
-            { label: "Receita fechada da equipe", value: team.revenue, goal: team.goalRevenue, text: `${money(team.revenue)} de ${money(team.goalRevenue)}` },
+            { label: showRevenue ? "Fechamentos da equipe" : "Contratos fechados da equipe", value: team.count, goal: team.goalCount, text: `${team.count} de ${Math.round(team.goalCount)}` },
+            ...(showRevenue
+              ? [{ label: "Receita fechada da equipe", value: team.revenue, goal: team.goalRevenue, text: `${money(team.revenue)} de ${money(team.goalRevenue)}` }]
+              : []),
           ].map((t) => (
             <div key={t.label} className="rounded-lg border border-border bg-white p-4">
               <div className="flex items-baseline justify-between gap-2">
@@ -99,14 +103,14 @@ function SalesPanel({
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">
               <th className="py-2 pr-4 font-normal">Vendedor</th>
-              <th className="py-2 pr-4 font-normal">Fechamentos</th>
-              <th className="py-2 font-normal">Receita fechada</th>
+              <th className="py-2 pr-4 font-normal">{showRevenue ? "Fechamentos" : "Contratos fechados"}</th>
+              {showRevenue && <th className="py-2 font-normal">Receita fechada</th>}
             </tr>
           </thead>
           <tbody>
             {sellers.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-3 text-muted">Nenhuma pessoa na conta.</td>
+                <td colSpan={showRevenue ? 3 : 2} className="py-3 text-muted">Nenhuma pessoa na conta.</td>
               </tr>
             ) : (
               sellers.map((s) => (
@@ -124,6 +128,7 @@ function SalesPanel({
                       <Bar value={s.count} goal={s.goalCount} />
                     </div>
                   </td>
+                  {showRevenue && (
                   <td className="py-2.5">
                     <div className="flex items-center justify-between gap-3 text-xs">
                       <span className="text-ink">
@@ -136,6 +141,7 @@ function SalesPanel({
                       <Bar value={s.revenue} goal={s.goalRevenue} />
                     </div>
                   </td>
+                  )}
                 </tr>
               ))
             )}
@@ -274,8 +280,12 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       if (c.monthly_value && Number(c.monthly_value) > 0) monthlyByClient.set(c.id, Number(c.monthly_value));
     }
   }
+  const olympicSettings = readOlympicSettings(targets);
+  const mode = olympicMode(olympicSettings);
+  const byContracts = mode === "contratos";
   const monthSales = monthlySales({
     month,
+    countWithoutValue: byContracts,
     closedOpps: closedOppList.map((o) => ({
       id: o.id,
       company: oneRel(o.crm_companies)?.name ?? "Cliente",
@@ -288,8 +298,6 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   });
   const sumBy = (pred: (e: (typeof monthSales)[number]) => boolean) => monthSales.filter(pred).reduce((x, e) => x + e.value, 0);
   const countBy = (pred: (e: (typeof monthSales)[number]) => boolean) => monthSales.filter(pred).length;
-  const olympicSettings = readOlympicSettings(targets);
-  const mode = olympicMode(olympicSettings);
   const olympic = activeOlympicTargets(olympicSettings);
   const olympicValue = mode === "contratos" ? countBy(isContract) : sumBy(() => true);
   const olympicBreakdown =
@@ -352,7 +360,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
       goalCount: memberGoals[m.id]?.fechamentos !== undefined ? memberGoals[m.id].fechamentos! * factor : null,
       goalRevenue: memberGoals[m.id]?.receita_fechada !== undefined ? memberGoals[m.id].receita_fechada! * factor : null,
     }))
-    .sort((a, b) => b.revenue - a.revenue || b.count - a.count);
+    .sort((a, b) => (byContracts ? b.count - a.count || b.revenue - a.revenue : b.revenue - a.revenue || b.count - a.count));
   const teamGoalCount = (targets.fechamentos ?? 3) * factor;
   const teamGoalRevenue = (targets.receita_fechada ?? 15000) * factor;
 
@@ -374,7 +382,11 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   // Vendas e fechamentos primeiro; as métricas de atividade vêm depois.
   const SALES_FIRST = ["fechamentos", "receita_fechada", "ticket_medio", "taxa_conversao", "tempo_medio_fechar"];
   // Fluxo enxuto (sem etapa de proposta): o cartão "Propostas apresentadas" ficaria sempre zerado, então sai.
-  const visibleCards = cards.filter((c) => c.key !== "propostas_apresentadas" || proposalStageIds.size > 0);
+  const visibleCards = cards
+    .filter((c) => c.key !== "propostas_apresentadas" || proposalStageIds.size > 0)
+    // Meta por contratos: sem valores (receita, ticket médio e valor em negociação saem).
+    .filter((c) => !byContracts || !(c.key === "receita_fechada" || c.key === "ticket_medio" || c.label === "Valor em negociação"))
+    .map((c) => (byContracts && c.key === "fechamentos" ? { ...c, label: "Contratos fechados" } : c));
   visibleCards.sort((a, b) => {
     const ra = a.key && SALES_FIRST.includes(a.key) ? SALES_FIRST.indexOf(a.key) : 99;
     const rb = b.key && SALES_FIRST.includes(b.key) ? SALES_FIRST.indexOf(b.key) : 99;
@@ -468,6 +480,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
             : null
         }
         sellers={sellerRows}
+        showRevenue={!byContracts}
       />
 
       <style>{`

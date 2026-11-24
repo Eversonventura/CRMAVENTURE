@@ -27,10 +27,13 @@ export const SEGMENTS = [
 
 export const AGENCY_SEGMENT = "agencia_marketing";
 
-export type CrmSettings = { businessModel: BusinessModel; segment: string | null };
+// Como a conta mede vendas: por valor (R$) ou por contratos fechados (sem preço). Vem da meta olímpica.
+export type SalesMode = "valor" | "contratos";
+
+export type CrmSettings = { businessModel: BusinessModel; segment: string | null; salesMode: SalesMode };
 
 // Conta sem linha de configurações (ainda não definida): B2B sem segmento.
-export const DEFAULT_SETTINGS: CrmSettings = { businessModel: "b2b", segment: null };
+export const DEFAULT_SETTINGS: CrmSettings = { businessModel: "b2b", segment: null, salesMode: "valor" };
 
 // Redes sociais e site da empresa só fazem sentido para agência de marketing (B2B).
 export const showCompanyOnlineFields = (s: CrmSettings) => s.businessModel === "b2b" && s.segment === AGENCY_SEGMENT;

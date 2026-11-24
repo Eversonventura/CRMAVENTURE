@@ -304,9 +304,11 @@ export function OpportunityModal({
                   <input name="service_interest" defaultValue={opportunity?.serviceInterest ?? ""} className={inputClass} />
                 </Field>
               )}
-              <Field label="Valor estimado (R$)">
-                <input name="estimated_value" type="number" step="0.01" defaultValue={opportunity?.estimatedValue ?? ""} className={inputClass} />
-              </Field>
+              {settings.salesMode !== "contratos" && (
+                <Field label="Valor estimado (R$)">
+                  <input name="estimated_value" type="number" step="0.01" defaultValue={opportunity?.estimatedValue ?? ""} className={inputClass} />
+                </Field>
+              )}
               {!isB2C && (
                 <>
                   <Field label="Probabilidade (%)">

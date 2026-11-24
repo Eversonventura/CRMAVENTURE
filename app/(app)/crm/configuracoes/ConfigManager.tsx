@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BUSINESS_MODEL_LABELS, SEGMENTS, type BusinessModel } from "../business";
+import { BUSINESS_MODEL_LABELS, SEGMENTS, type BusinessModel, type SalesMode } from "../business";
 import { GoalsForm } from "../GoalsForm";
 import type { SalesGoalMap } from "../sales-goals";
 import { saveDailyGoals } from "../diario/actions";
@@ -142,6 +142,7 @@ export function ConfigManager({
   weekly,
   olympic,
   followups,
+  salesMode,
   kpiTargets,
   members,
   memberGoals,
@@ -152,6 +153,7 @@ export function ConfigManager({
   weekly: number;
   olympic: OlympicSettings;
   followups: FollowupConfig;
+  salesMode: SalesMode;
   kpiTargets: Record<string, number>;
   members: { id: string; name: string }[];
   memberGoals: SalesGoalMap;
@@ -190,9 +192,9 @@ export function ConfigManager({
       <Section
         id="metas"
         title="Metas do mês"
-        hint="Metas da equipe e de cada vendedor que aparecem na Visão Geral (fechamentos, receita, conversão, ticket médio e outras)."
+        hint={salesMode === "contratos" ? "Metas da equipe e de cada vendedor na Visão Geral. Sua conta mede vendas por contratos fechados (sem receita nem ticket médio); para voltar a medir por faturamento, mude a Meta olímpica." : "Metas da equipe e de cada vendedor na Visão Geral (fechamentos, receita, conversão, ticket médio e outras). Para medir por contratos fechados, mude a Meta olímpica."}
       >
-        <GoalsForm targets={kpiTargets} members={members} memberGoals={memberGoals} />
+        <GoalsForm salesMode={salesMode} targets={kpiTargets} members={members} memberGoals={memberGoals} />
       </Section>
 
       <Section
