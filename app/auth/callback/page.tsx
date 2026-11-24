@@ -48,6 +48,20 @@ export default function AuthCallbackPage() {
         return;
       }
 
+      // Link de acesso gerado pelo CRM (?token_hash=...&type=...): só valida quando a pessoa abre a página.
+      const query = new URLSearchParams(window.location.search);
+      const tokenHash = query.get("token_hash");
+      const otpType = query.get("type");
+      if (tokenHash && (otpType === "invite" || otpType === "recovery" || otpType === "magiclink")) {
+        const { error: otpError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
+        if (otpError) {
+          setError("Este link expirou ou já foi usado. Peça ao administrador para gerar um novo link de acesso.");
+          return;
+        }
+        router.replace("/auth/definir-senha");
+        return;
+      }
+
       // Fluxo PKCE (?code=... na query) — fallback pra outros tipos de link.
       const code = new URLSearchParams(window.location.search).get("code");
       if (code) {

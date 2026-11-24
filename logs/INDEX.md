@@ -25,3 +25,4 @@
 | Compartilhar conta envia e-mail: convite do Supabase para quem não tem login; aviso (Resend) para quem já tem | 20 |
 | Convite mostra o link de acesso (copiar / WhatsApp) quando o e-mail não sai, sem depender de SMTP | 21 |
 | Configurações: salvar confirma lendo de volta, nunca trava, sempre mostra mensagem; leitura filtra pela conta | 22 |
+| Link de acesso passa pelo CRM (token_hash) e não é gasto por prévia; botão Novo link de acesso para quem ainda não entrou | 23 |

@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/access";
+import { getAccessContext, getCurrentUser } from "@/lib/access";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendCrmEmail } from "@/app/(app)/crm/email";
 import { cleanWorkspaceId, WS_COOKIE } from "@/lib/workspace";
@@ -74,6 +74,23 @@ async function siteOrigin() {
   return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? (host ? `${proto}://${host}` : "");
 }
 
+type LinkType = "invite" | "recovery" | "magiclink";
+
+// Gera o acesso SEM mandar e-mail. O link aponta para o próprio CRM com o token (token_hash) e só
+// valida quando a pessoa abre a página: assim a prévia do WhatsApp ou o antivírus do e-mail não
+// "gastam" o link antes dela (o link direto do Supabase é de uso único e expira rápido).
+async function buildAccessLink(email: string, origin: string, types: LinkType[]): Promise<{ link?: string; error?: string }> {
+  const admin = createServiceClient().auth.admin;
+  let lastError: string | undefined;
+  for (const type of types) {
+    const res = await admin.generateLink({ type, email, options: { redirectTo: `${origin}/auth/callback` } });
+    const hashed = res.data?.properties?.hashed_token;
+    if (hashed) return { link: `${origin}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=${type}` };
+    lastError = res.error?.message ?? lastError;
+  }
+  return { error: lastError };
+}
+
 export async function inviteMember(workspaceId: string, email: string, role: string): Promise<Result> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("invite_to_workspace", { p_ws: workspaceId, p_email: email, p_role: role });
@@ -114,16 +131,8 @@ export async function inviteMember(workspaceId: string, email: string, role: str
   }
 
   // O e-mail não saiu (ex.: SMTP do Supabase com problema ou no limite). Gera o link de acesso para você
-  // copiar e mandar por WhatsApp. Se o usuário já foi criado pela tentativa acima, usa o link mágico.
-  let link: string | undefined;
-  const invite = await admin.generateLink({ type: "invite", email: to, options: { redirectTo } });
-  link = invite.data?.properties?.action_link;
-  let linkError = invite.error?.message;
-  if (!link) {
-    const magic = await admin.generateLink({ type: "magiclink", email: to, options: { redirectTo } });
-    link = magic.data?.properties?.action_link;
-    linkError = magic.error?.message ?? linkError;
-  }
+  // copiar e mandar por WhatsApp. Se o usuário já foi criado pela tentativa acima, usa o link de recuperação.
+  const { link, error: linkError } = await buildAccessLink(to, origin, ["invite", "recovery", "magiclink"]);
   if (link) {
     return {
       message: "O e-mail não saiu, mas o acesso está pronto. Copie o link abaixo e envie para a pessoa (WhatsApp, por exemplo). Ela define a senha e já entra na conta.",
@@ -133,6 +142,34 @@ export async function inviteMember(workspaceId: string, email: string, role: str
   return {
     message: `Convite registrado, mas o e-mail não saiu (${mailError.message}) e o link de acesso também não pôde ser gerado (${linkError ?? "sem detalhe"}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
   };
+}
+
+// Novo link de acesso para quem foi convidado e ainda NÃO entrou (o anterior expirou ou foi gasto).
+// Só vale para quem nunca fez login: assim um administrador não consegue entrar como outra pessoa.
+export async function generateAccessLink(memberId: string): Promise<Result> {
+  const access = await getAccessContext();
+  if (!access.isFullAdmin) return { error: "Só o administrador gera links de acesso." };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: "Geração de link não configurada (falta a chave de serviço)." };
+
+  const supabase = await createClient();
+  const { data: member } = await supabase
+    .from("team_members")
+    .select("profile_id, email")
+    .eq("id", memberId)
+    .eq("workspace_id", access.workspaceId ?? "")
+    .maybeSingle();
+  const m = member as { profile_id: string; email: string | null } | null;
+  if (!m?.email) return { error: "Pessoa não encontrada nesta conta." };
+
+  const { data: u } = await createServiceClient().auth.admin.getUserById(m.profile_id);
+  if (!u?.user) return { error: "Login dessa pessoa não encontrado." };
+  if (u.user.last_sign_in_at) {
+    return { error: "Essa pessoa já acessou o sistema. Para recuperar a senha, ela usa \"Esqueci minha senha\" na tela de login." };
+  }
+
+  const { link, error } = await buildAccessLink(m.email.toLowerCase(), await siteOrigin(), ["recovery", "magiclink", "invite"]);
+  if (!link) return { error: `Não foi possível gerar o link (${error ?? "sem detalhe"}).` };
+  return { message: "Novo link de acesso gerado. Copie e envie para a pessoa; ela define a senha e entra.", link };
 }
 
 export async function cancelInvite(id: string): Promise<Result> {

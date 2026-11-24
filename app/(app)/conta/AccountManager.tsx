@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import {
   cancelInvite,
   deleteWorkspace,
+  generateAccessLink,
   inviteMember,
   removeMember,
   renameWorkspace,
@@ -173,6 +174,17 @@ export function AccountManager({
                     </select>
                   ) : (
                     <span className="text-xs text-muted">{ROLE_LABELS[m.crm_role]}</span>
+                  )}
+                  {isAdmin && !isOwner && !isMe && (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => run(() => generateAccessLink(m.id))}
+                      className="text-xs text-muted hover:text-brand"
+                      title="Para quem foi convidado e ainda não entrou: gera um link novo de acesso"
+                    >
+                      Novo link de acesso
+                    </button>
                   )}
                   {!isOwner && (isAdmin || isMe) && (
                     <button
