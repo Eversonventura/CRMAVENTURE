@@ -24,3 +24,4 @@
 | Botão Metas sai da Visão Geral; metas do mês (equipe e por vendedor) viram seção em Configurações | 19 |
 | Compartilhar conta envia e-mail: convite do Supabase para quem não tem login; aviso (Resend) para quem já tem | 20 |
 | Convite mostra o link de acesso (copiar / WhatsApp) quando o e-mail não sai, sem depender de SMTP | 21 |
+| Configurações: salvar confirma lendo de volta, nunca trava, sempre mostra mensagem; leitura filtra pela conta | 22 |

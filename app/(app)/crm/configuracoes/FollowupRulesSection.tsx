@@ -35,15 +35,20 @@ function StageRuleRow({ stage, rule }: { stage: FollowupConfig["stages"][number]
   async function save() {
     setBusy(true);
     setMessage(null);
-    const result = await saveFollowupRule(stage.id, {
-      taskType: draft.taskType,
-      intervalDays: Number(draft.intervalDays),
-      repeat: draft.repeat,
-      dailyGoal: draft.dailyGoal === "" ? null : Number(draft.dailyGoal),
-      active: draft.active,
-    });
-    setBusy(false);
-    setMessage(result.error ?? "Salvo.");
+    try {
+      const result = await saveFollowupRule(stage.id, {
+        taskType: draft.taskType,
+        intervalDays: Number(draft.intervalDays),
+        repeat: draft.repeat,
+        dailyGoal: draft.dailyGoal === "" ? null : Number(draft.dailyGoal),
+        active: draft.active,
+      });
+      setMessage(result.error ?? "Salvo.");
+    } catch {
+      setMessage("Não foi possível salvar agora. Verifique a conexão e tente de novo.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

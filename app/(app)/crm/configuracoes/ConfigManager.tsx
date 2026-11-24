@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BUSINESS_MODEL_LABELS, SEGMENTS, type BusinessModel } from "../business";
 import { GoalsForm } from "../GoalsForm";
 import type { SalesGoalMap } from "../sales-goals";
@@ -29,6 +30,7 @@ function Feedback({ msg }: { msg: { kind: "ok" | "error"; text: string } | null 
 }
 
 function BusinessProfile({ model: initialModel, segment: initialSegment }: { model: BusinessModel; segment: string | null }) {
+  const router = useRouter();
   const [model, setModel] = useState<BusinessModel>(initialModel);
   const [segment, setSegment] = useState<string>(initialSegment ?? "");
   const [busy, setBusy] = useState(false);
@@ -37,9 +39,15 @@ function BusinessProfile({ model: initialModel, segment: initialSegment }: { mod
   async function save() {
     setBusy(true);
     setMsg(null);
-    const result = await saveBusinessProfile(model, segment || null);
-    setBusy(false);
-    setMsg(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Perfil do negócio salvo." });
+    try {
+      const result = await saveBusinessProfile(model, segment || null);
+      setMsg(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Perfil do negócio salvo." });
+      if (!result.error) router.refresh();
+    } catch {
+      setMsg({ kind: "error", text: "Não foi possível salvar agora. Verifique a conexão e tente de novo." });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -84,6 +92,7 @@ function BusinessProfile({ model: initialModel, segment: initialSegment }: { mod
 }
 
 function Cadence({ approaches: a0, weekly: w0 }: { approaches: number; weekly: number }) {
+  const router = useRouter();
   const [approaches, setApproaches] = useState(String(a0));
   const [weekly, setWeekly] = useState(String(w0));
   const [busy, setBusy] = useState(false);
@@ -93,9 +102,15 @@ function Cadence({ approaches: a0, weekly: w0 }: { approaches: number; weekly: n
     setBusy(true);
     setMsg(null);
     // Metas de follow-up por etapa ficam na seção "Follow-ups" (campo Meta/dia de cada etapa).
-    const result = await saveDailyGoals(Number(approaches), [], Number(weekly));
-    setBusy(false);
-    setMsg(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Cadência salva." });
+    try {
+      const result = await saveDailyGoals(Number(approaches), [], Number(weekly));
+      setMsg(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Cadência salva." });
+      if (!result.error) router.refresh();
+    } catch {
+      setMsg({ kind: "error", text: "Não foi possível salvar agora. Verifique a conexão e tente de novo." });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

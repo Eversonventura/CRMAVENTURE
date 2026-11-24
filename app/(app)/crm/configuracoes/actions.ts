@@ -19,6 +19,16 @@ export async function saveBusinessProfile(model: BusinessModel, segment: string 
       { onConflict: "workspace_id" }
     );
   if (error) return { error: error.message };
+
+  // Confere se gravou de verdade (a RLS pode barrar sem erro): lê de volta.
+  const { data: saved } = await supabase
+    .from("crm_settings")
+    .select("business_model, segment")
+    .eq("workspace_id", access.workspaceId)
+    .maybeSingle();
+  if (!saved || saved.business_model !== model || (saved.segment ?? null) !== segment) {
+    return { error: `Não foi possível confirmar a gravação na conta "${access.workspaceName ?? access.workspaceId}". Atualize a página e tente de novo; se persistir, avise o suporte.` };
+  }
   revalidatePath("/crm", "layout");
   return {};
 }

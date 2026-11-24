@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { GOAL_METRICS } from "./goals";
 import { saveCrmGoals, saveMemberSalesGoals } from "./goal-actions";
 import type { SalesGoalMap } from "./sales-goals";

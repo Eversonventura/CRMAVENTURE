@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { saveOlympicGoals } from "../goal-actions";
 import { OLYMPIC_DEFAULTS, olympicTargets, type OlympicSettings } from "../olympic";
 
@@ -9,6 +10,7 @@ const input = "w-24 rounded-lg border border-border bg-surface2 px-2 py-1.5 text
 
 // Meta olímpica: contar o mês por VALOR vendido (R$) ou por CONTRATOS fechados.
 export function OlympicSettingsForm({ settings }: { settings: OlympicSettings }) {
+  const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries({ ...OLYMPIC_DEFAULTS, ...settings }).map(([k, v]) => [k, String(v)]))
   );
@@ -23,9 +25,15 @@ export function OlympicSettingsForm({ settings }: { settings: OlympicSettings })
   async function save() {
     setBusy(true);
     setMessage(null);
-    const result = await saveOlympicGoals(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v) || 0])));
-    setBusy(false);
-    setMessage(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Meta olímpica salva." });
+    try {
+      const result = await saveOlympicGoals(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v) || 0])));
+      setMessage(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Meta olímpica salva." });
+      if (!result.error) router.refresh();
+    } catch {
+      setMessage({ kind: "error", text: "Não foi possível salvar agora. Verifique a conexão e tente de novo." });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const row = (key: string, label: string, suffix: string, step: string | number = "any") => (
