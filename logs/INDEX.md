@@ -34,3 +34,4 @@
 | Conta única por pessoa: sem seletor nem troca de conta; a conta da empresa vale mais que a conta automática; migration 007 | 29 |
 | Diário de outra pessoa é só leitura (tela e servidor): ninguém registra ações em nome de outro | 30 |
 | Diário de outra pessoa continua só leitura, mas com links de WhatsApp liberados | 31 |
+| Meta olímpica visível para todos (admin, gestor, vendedor), mês a mês, com total da equipe; função crm_month_deals; migration 008 | 32 |

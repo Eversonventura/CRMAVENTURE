@@ -972,6 +972,35 @@ grant execute on function public.invite_to_workspace(uuid, text, text) to authen
 grant execute on function public.cancel_invite(uuid) to authenticated;
 grant execute on function public.set_member_role(uuid, text) to authenticated;
 grant execute on function public.remove_member(uuid) to authenticated;
+-- Meta olímpica para todos (Sprint 32; mesma coisa de supabase/migrations/008_meta_olimpica_para_todos.sql).
+create function public.crm_month_deals(p_start timestamptz, p_end timestamptz)
+returns table (
+  opportunity_id uuid,
+  estimated_value numeric,
+  deal_type text,
+  closed_at timestamptz,
+  won_client_id uuid,
+  plan_total numeric
+)
+language sql security definer stable
+set search_path = public
+as $$
+  select o.id, o.estimated_value, o.deal_type, o.closed_at, o.won_client_id,
+         (select r.sale_total from public.receivables r
+           where r.opportunity_id = o.id and r.kind = 'projeto'
+           limit 1)
+    from public.crm_opportunities o
+   where o.workspace_id = public.active_workspace_id()
+     and exists (select 1 from public.team_members tm
+                  where tm.workspace_id = o.workspace_id and tm.profile_id = auth.uid())
+     and o.status = 'fechada'
+     and o.closed_at >= p_start
+     and o.closed_at < p_end;
+$$;
+
+revoke all on function public.crm_month_deals(timestamptz, timestamptz) from public, anon;
+grant execute on function public.crm_month_deals(timestamptz, timestamptz) to authenticated;
+
 grant execute on function public.team_member_picker_options() to authenticated;
 grant execute on function public.update_my_profile(text) to authenticated;
 

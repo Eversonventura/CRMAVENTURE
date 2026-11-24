@@ -272,7 +272,39 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   // Venda recorrente: o valor da venda é a mensalidade definida no fechamento
   // (guardada no cliente), mesmo que a oportunidade não tenha valor estimado.
   type ClosedRow = { id: string; estimated_value: number | null; closed_at: string; won_client_id: string | null; deal_type: string | null; crm_companies: { name: string } | { name: string }[] | null };
-  const closedOppList = (closedOppRows as unknown as ClosedRow[] | null) ?? [];
+  let closedOppList = (closedOppRows as unknown as ClosedRow[] | null) ?? [];
+  // Meta olímpica é da equipe: gestor e vendedor só leem os próprios leads (RLS) e não leem os planos de pagamento,
+  // então o fechamento do mês vem de uma função do banco que devolve só os números, sem nomes de clientes.
+  if (!access.isFullAdmin) {
+    const [yy, mm] = [Number(month.slice(0, 4)), Number(month.slice(5, 7))];
+    const { data: dealRows } = await supabase.rpc("crm_month_deals", {
+      p_start: new Date(Date.UTC(yy, mm - 1, 1, 3)).toISOString(),
+      p_end: new Date(Date.UTC(yy, mm, 1, 3)).toISOString(),
+    });
+    type DealRow = { opportunity_id: string; estimated_value: number | null; deal_type: string | null; closed_at: string; won_client_id: string | null; plan_total: number | null };
+    const deals = (dealRows as DealRow[] | null) ?? [];
+    closedOppList = deals.map((d) => ({
+      id: d.opportunity_id,
+      estimated_value: d.estimated_value,
+      closed_at: d.closed_at,
+      won_client_id: d.won_client_id,
+      deal_type: d.deal_type,
+      crm_companies: { name: "Cliente" },
+    }));
+    saleGroups.clear();
+    for (const d of deals) {
+      if (d.plan_total === null) continue;
+      saleGroups.set(d.opportunity_id, {
+        saleId: d.opportunity_id,
+        kind: "projeto",
+        opportunityId: d.opportunity_id,
+        clientName: null,
+        description: "Projeto",
+        saleTotal: Number(d.plan_total),
+        firstDue: d.closed_at.slice(0, 10),
+      });
+    }
+  }
   const wonClientIds = Array.from(new Set(closedOppList.map((o) => o.won_client_id).filter((x): x is string => !!x)));
   const monthlyByClient = new Map<string, number>();
   if (wonClientIds.length > 0) {
@@ -451,7 +483,6 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
 
   return (
     <div>
-      {access.isFullAdmin && (
       <OlympicCard
         scope={access.workspaceId ?? ""}
         month={month}
@@ -463,8 +494,8 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
         breakdown={olympicBreakdown}
         sales={monthSales}
         periodParam={periodo}
+        showSales={access.isFullAdmin}
       />
-      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">

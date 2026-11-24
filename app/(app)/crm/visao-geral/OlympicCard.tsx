@@ -35,6 +35,7 @@ export function OlympicCard({
   breakdown,
   sales,
   periodParam,
+  showSales = true,
 }: {
   scope: string; // conta ativa (a comemoração "já vista" é guardada por conta)
   month: string;
@@ -46,6 +47,7 @@ export function OlympicCard({
   breakdown: { label: string; value: number }[];
   sales: { key: string; label: string; client: string; value: number; date: string }[];
   periodParam: string;
+  showSales?: boolean; // gestor/vendedor veem o total da equipe, sem a lista de clientes
 }) {
   const fmt = mode === "contratos" ? contracts : money;
   const progress = olympicProgress(progressValue, targets);
@@ -194,6 +196,7 @@ export function OlympicCard({
           </div>
         ))}
       </div>
+      {showSales && (
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-xs text-muted hover:text-ink">Ver as {sales.length} venda(s) deste mês</summary>
         <div className="mt-2 divide-y divide-border rounded-lg border border-border bg-white">
@@ -213,6 +216,7 @@ export function OlympicCard({
           )}
         </div>
       </details>
+      )}
       {isCurrentMonth && <p className="mt-2 text-[11px] text-muted">Mês em andamento — o valor sobe a cada venda fechada no fluxo.</p>}
     </div>
   );
