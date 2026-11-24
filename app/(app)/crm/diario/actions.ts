@@ -341,7 +341,7 @@ export async function registerApproach(input: ApproachInput): Promise<Result> {
       let targetId: string | null = null;
       if (input.result === "outra") targetId = input.stageId ?? null;
       else if (pipelineId) {
-        const role = input.result === "respondeu" ? "contato" : "standby";
+        const role = input.result === "respondeu" ? "prospect" : "standby";
         targetId = (await findPipelineStage(supabase, pipelineId, { role }))?.id ?? null;
       }
       if (!targetId) return { error: input.result === "outra" ? "Escolha a etapa." : "Etapa de destino não encontrada no fluxo." };

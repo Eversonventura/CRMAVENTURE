@@ -21,12 +21,10 @@ const inputClass =
 // Nomes mostrados só neste seletor (o Diário continua usando STAGE_ROLE_LABELS).
 const ROLE_OPTION_LABELS: Record<StageRole, string> = {
   lead: "Lead",
-  tentativa: "Prospect — tentativa de contato",
-  contato: "Prospect — contato realizado",
-  briefing: "Qualificado — pré-briefing",
-  diagnostico_proposta: "Qualificado — diagnóstico / proposta",
-  negociacao: "Qualificado — negociação",
-  standby: "Stand-by (aquecimento)",
+  prospect: "Prospect",
+  qualificado: "Qualificado",
+  desqualificado: "Desqualificado",
+  standby: "Stand-by",
 };
 
 export function StageManagerModal({

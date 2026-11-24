@@ -144,7 +144,7 @@ create table public.crm_stages (
   color text not null default '#FF007A',
   kind text not null default 'open' check (kind in ('open', 'won', 'lost')),
   role text check (
-    role in ('lead', 'tentativa', 'contato', 'briefing', 'diagnostico_proposta', 'negociacao', 'standby')
+    role in ('lead', 'prospect', 'qualificado', 'desqualificado', 'standby')
   )
 );
 create index idx_crm_stages_pipeline_id on public.crm_stages (pipeline_id, position);
@@ -464,6 +464,8 @@ as $$
 declare
   old_role text;
   new_role text;
+  old_pos int;
+  new_pos int;
 begin
   if new.status = 'fechada' and old.status is distinct from 'fechada' then
     new.closed_at := coalesce(new.closed_at, now());
@@ -475,9 +477,10 @@ begin
   end if;
 
   if new.stage_id is distinct from old.stage_id and new.first_contact_at is null then
-    select role into old_role from public.crm_stages where id = old.stage_id;
-    select role into new_role from public.crm_stages where id = new.stage_id;
-    if old_role = 'lead' and new_role is distinct from 'lead' then
+    select role, position into old_role, old_pos from public.crm_stages where id = old.stage_id;
+    select role, position into new_role, new_pos from public.crm_stages where id = new.stage_id;
+    -- Sair do lead (ou avançar entre etapas de lead, como "Tentativa de contato") conta como primeiro contato.
+    if old_role = 'lead' and (new_role is distinct from 'lead' or new_pos > old_pos) then
       new.first_contact_at := now();
     end if;
   end if;
@@ -550,7 +553,7 @@ begin
   -- Funil padrão enxuto: o cliente adiciona mais etapas se quiser (aba Funil → Etapas).
   insert into public.crm_stages (workspace_id, pipeline_id, name, position, color, kind, role) values
     (p_ws, pid, 'Lead',              0, '#64748B', 'open', 'lead'),
-    (p_ws, pid, 'Contato realizado', 1, '#EAB308', 'open', 'contato'),
+    (p_ws, pid, 'Contato realizado', 1, '#EAB308', 'open', 'prospect'),
     (p_ws, pid, 'Fechamento',        2, '#16A34A', 'won',  null),
     (p_ws, pid, 'Perdido',           3, '#EF4444', 'lost', null);
 
@@ -558,7 +561,7 @@ begin
   insert into public.crm_followup_rules (workspace_id, stage_id, task_type, interval_days, repeat, daily_goal)
   select p_ws, id, 'follow_up', 3, true, 5
     from public.crm_stages
-   where workspace_id = p_ws and role = 'contato';
+   where workspace_id = p_ws and role = 'prospect';
 
   -- Valores iniciais: ajuste em CRM → Visão geral → Metas.
   insert into public.crm_goals (workspace_id, metric, owner_id, target, direction) values

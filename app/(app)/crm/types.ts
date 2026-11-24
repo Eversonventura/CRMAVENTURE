@@ -43,14 +43,9 @@ export const LOSS_REASONS = [
 // role: o papel da etapa nos blocos do Diário e nas regras de follow-up
 // (várias etapas podem ter o mesmo role; null = sem papel especial).
 export type StageKind = "open" | "won" | "lost";
-export type StageRole =
-  | "lead"
-  | "tentativa"
-  | "contato"
-  | "briefing"
-  | "diagnostico_proposta"
-  | "negociacao"
-  | "standby";
+// Lead = ainda não respondeu (inclui "Tentativa de contato"); prospect = respondeu; qualificado = em análise,
+// proposta ou negociação; desqualificado; standby = não está no momento de compra, mas pode comprar.
+export type StageRole = "lead" | "prospect" | "qualificado" | "desqualificado" | "standby";
 
 export const STAGE_KIND_LABELS: Record<StageKind, string> = {
   open: "Acompanhar",
@@ -59,13 +54,11 @@ export const STAGE_KIND_LABELS: Record<StageKind, string> = {
 };
 
 export const STAGE_ROLE_LABELS: Record<StageRole, string> = {
-  lead: "Novo lead",
-  tentativa: "Tentativa de contato",
-  contato: "Contato realizado",
-  briefing: "Pré-briefing",
-  diagnostico_proposta: "Diagnóstico / proposta apresentada",
-  negociacao: "Negociação",
-  standby: "Stand-by (aquecimento)",
+  lead: "Lead",
+  prospect: "Prospect",
+  qualificado: "Qualificado",
+  desqualificado: "Desqualificado",
+  standby: "Stand-by",
 };
 
 export type CrmStage = {

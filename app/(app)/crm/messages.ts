@@ -33,6 +33,6 @@ export function fillTemplate(body: string, vars: { contact: string | null; compa
 
 // Que tipo de mensagem faz sentido sugerir primeiro, pela etapa do lead.
 export function suggestedKind(stageRole: string | null | undefined): MessageKind {
-  if (!stageRole || stageRole === "lead" || stageRole === "tentativa") return "tentativa";
+  if (!stageRole || stageRole === "lead") return "tentativa";
   return "follow_up";
 }

@@ -71,7 +71,7 @@ export default async function CrmPropostasPage({
   const base = supabase.from("crm_opportunities").select(SELECT).limit(500);
   const query =
     view === "abertas"
-      ? base.eq("status", "aberta").in("crm_stages.role", ["diagnostico_proposta", "negociacao"]).order("entered_at", { ascending: false })
+      ? base.eq("status", "aberta").in("crm_stages.role", ["qualificado"]).order("entered_at", { ascending: false })
       : view === "fechadas"
         ? (since ? base.eq("status", "fechada").gte("closed_at", since) : base.eq("status", "fechada")).order("closed_at", { ascending: false })
         : (since ? base.eq("status", "perdida").gte("lost_at", since) : base.eq("status", "perdida")).order("lost_at", { ascending: false });

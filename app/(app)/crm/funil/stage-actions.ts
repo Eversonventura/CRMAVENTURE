@@ -10,15 +10,7 @@ import type { StageKind, StageRole } from "../types";
 // que "não pega" em silêncio (RLS em update devolve 0 linhas, não erro).
 
 const KINDS: StageKind[] = ["open", "won", "lost"];
-const ROLES: StageRole[] = [
-  "lead",
-  "tentativa",
-  "contato",
-  "briefing",
-  "diagnostico_proposta",
-  "negociacao",
-  "standby",
-];
+const ROLES: StageRole[] = ["lead", "prospect", "qualificado", "desqualificado", "standby"];
 const NEW_STAGE_COLOR = "#64748B";
 
 type Result = { error?: string };

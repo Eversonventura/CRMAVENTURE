@@ -408,11 +408,21 @@ export async function registerContactAttempt(opportunityId: string): Promise<{ e
   if (!oppRaw) return { error: "Oportunidade não encontrada." };
   const currentStage = Array.isArray(oppRaw.crm_stages) ? oppRaw.crm_stages[0] : oppRaw.crm_stages;
 
-  // A etapa "Tentativa de contato" é a de role `tentativa` do pipeline da
-  // oportunidade (o nome pode ter sido trocado).
-  const tentativaStage = currentStage?.pipeline_id
-    ? await findPipelineStage(supabase, currentStage.pipeline_id, { role: "tentativa" })
-    : null;
+  // "Tentativa de contato" é uma etapa de papel Lead (o lead ainda não respondeu) que vem depois da etapa
+  // atual no pipeline da oportunidade; o nome pode ter sido trocado. Sem ela, só registra a tentativa.
+  let tentativaStage: { id: string; position: number } | null = null;
+  if (currentStage?.pipeline_id) {
+    const { data: leadStages } = await supabase
+      .from("crm_stages")
+      .select("id, position")
+      .eq("pipeline_id", currentStage.pipeline_id)
+      .eq("role", "lead")
+      .eq("kind", "open")
+      .gt("position", currentStage.position ?? -1)
+      .order("position")
+      .limit(1);
+    tentativaStage = (leadStages?.[0] as { id: string; position: number } | undefined) ?? null;
+  }
 
   if (tentativaStage && (currentStage?.position ?? -1) < tentativaStage.position) {
     const result = await moveOpportunityStage(opportunityId, tentativaStage.id);

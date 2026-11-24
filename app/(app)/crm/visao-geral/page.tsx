@@ -363,7 +363,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
 
   // Propostas apresentadas = oportunidades que entraram numa etapa de
   // diagnóstico/proposta no período (única fonte: o fluxo).
-  const proposalStageIds = new Set(stages.filter((s) => s.role === "diagnostico_proposta").map((s) => s.id));
+  const proposalStageIds = new Set(stages.filter((s) => s.role === "qualificado").map((s) => s.id));
   const proposalsPresented = new Set(history.filter((h) => h.to_stage_id && proposalStageIds.has(h.to_stage_id)).map((h) => h.opportunity_id)).size;
 
   const revenue = closed.reduce((s, o) => s + Number(o.estimated_value ?? 0), 0);

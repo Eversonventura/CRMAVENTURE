@@ -12,7 +12,7 @@ import { adChannelNames } from "../channels";
 import type { TeamMemberOption } from "../types";
 
 const DEFAULT_APPROACH_GOAL = 10;
-const FOLLOWUP_ROLES = ["tentativa", "contato", "standby", "briefing", "diagnostico_proposta", "negociacao"] as const;
+const FOLLOWUP_ROLES = ["lead", "prospect", "qualificado", "standby"] as const;
 const TEMP_RANK: Record<string, number> = { quente: 0, morno: 1, frio: 2 };
 
 function one<T>(rel: T | T[] | null | undefined): T | null {
@@ -157,7 +157,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
       .from("crm_opportunities")
       .select("id, estimated_value, temperature, responsible_id, crm_companies(name), crm_contacts(whatsapp, phone), crm_stages!inner(name, color, role)")
       .eq("status", "aberta")
-      .in("crm_stages.role", ["briefing", "diagnostico_proposta", "negociacao"])
+      .in("crm_stages.role", ["qualificado"])
       .or(mine)
       .limit(100),
     supabase
