@@ -21,6 +21,8 @@ export type AccessContext = {
   crmRole: CrmRole | null;
   // Administrador da conta ativa: configura o CRM (etapas, cadência, metas, follow-ups) e a equipe.
   isFullAdmin: boolean;
+  // Administrador ou gestor: mexe na cadência e nos follow-ups (o resto da configuração é só do administrador).
+  isManager: boolean;
   // id do vínculo (team_members) da pessoa na conta ativa.
   teamMemberId: string | null;
 };
@@ -41,6 +43,7 @@ export const getAccessContext = cache(async (): Promise<AccessContext> => {
     workspaces: [],
     crmRole: null,
     isFullAdmin: false,
+    isManager: false,
     teamMemberId: null,
   };
   const user = await getCurrentUser();
@@ -77,6 +80,7 @@ export const getAccessContext = cache(async (): Promise<AccessContext> => {
     workspaces,
     crmRole: active.role,
     isFullAdmin: active.role === "administrador",
+    isManager: active.role === "administrador" || active.role === "gestor",
     teamMemberId: active.memberId,
   };
 });

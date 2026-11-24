@@ -44,7 +44,7 @@ export type CadenceInput = {
 // Cadência do Diário (só administrador): cada meta é um registro em crm_goals (owner nulo).
 export async function saveCadence(input: CadenceInput): Promise<{ error?: string }> {
   const access = await getAccessContext();
-  if (!access.isFullAdmin) return { error: "Só o administrador da conta altera a cadência." };
+  if (!access.isManager) return { error: "Só administrador e gestor alteram a cadência." };
   const values: [string, number][] = [
     ["daily_approaches", input.approaches],
     ["weekly_approaches", input.weeklyApproaches],

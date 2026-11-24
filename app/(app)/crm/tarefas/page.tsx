@@ -5,7 +5,7 @@ import type { CrmTask, TeamMemberOption } from "../types";
 
 export default async function CrmTarefasPage() {
   const supabase = await createClient();
-  const canConfigure = (await getAccessContext()).isFullAdmin;
+  const canConfigure = (await getAccessContext()).isManager;
 
   const [{ data: tasks }, { data: teamMembers }, { data: opportunities }] = await Promise.all([
     supabase

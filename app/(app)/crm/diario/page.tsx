@@ -504,7 +504,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     enrich,
     supply,
     stageOptions,
-    canEditGoals: access.isFullAdmin,
+    canEditGoals: access.isManager,
     sales,
     approach: {
       goal: approachGoal,

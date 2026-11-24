@@ -162,6 +162,7 @@ function Cadence({
 }
 
 export function ConfigManager({
+  isAdmin,
   model,
   segment,
   approaches,
@@ -176,6 +177,7 @@ export function ConfigManager({
   members,
   memberGoals,
 }: {
+  isAdmin: boolean;
   model: BusinessModel;
   segment: string | null;
   approaches: number;
@@ -194,9 +196,14 @@ export function ConfigManager({
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="font-display text-2xl font-medium text-ink">Configurações</h1>
-        <p className="mt-1.5 text-sm text-muted">Só o administrador da conta vê esta área. As mudanças valem para todo o time.</p>
+        <p className="mt-1.5 text-sm text-muted">
+          {isAdmin
+            ? "As mudanças valem para todo o time. O gestor altera só a cadência e os follow-ups."
+            : "Como gestor, você ajusta a cadência e os follow-ups. Perfil do negócio, meta olímpica e metas do mês são só do administrador."}
+        </p>
       </div>
 
+      {isAdmin && (
       <Section
         id="perfil"
         title="Perfil do negócio"
@@ -204,6 +211,7 @@ export function ConfigManager({
       >
         <BusinessProfile model={model} segment={segment} />
       </Section>
+      )}
 
       <Section
         id="cadencia"
@@ -213,6 +221,7 @@ export function ConfigManager({
         <Cadence approaches={approaches} weeklyApproaches={weeklyApproaches} weekly={weekly} weeklyAdLeads={weeklyAdLeads} dailyAdReplies={dailyAdReplies} />
       </Section>
 
+      {isAdmin && (
       <Section
         id="meta-olimpica"
         title="Meta olímpica"
@@ -220,7 +229,9 @@ export function ConfigManager({
       >
         <OlympicSettingsForm settings={olympic} />
       </Section>
+      )}
 
+      {isAdmin && (
       <Section
         id="metas"
         title="Metas do mês"
@@ -228,6 +239,7 @@ export function ConfigManager({
       >
         <GoalsForm salesMode={salesMode} targets={kpiTargets} members={members} memberGoals={memberGoals} />
       </Section>
+      )}
 
       <Section
         id="follow-ups"

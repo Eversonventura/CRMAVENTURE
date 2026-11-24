@@ -876,6 +876,24 @@ begin
 end
 $$;
 
+-- Gestor também altera a cadência (metas diárias/semanais) e os follow-ups por etapa (Sprint 28;
+-- mesma coisa de supabase/migrations/006_permissoes_gestor.sql). O resto da configuração é só do administrador.
+create policy "crm_followup_rules: gestor gerencia" on public.crm_followup_rules
+  for all
+  using (workspace_id = public.active_workspace_id() and public.crm_can_see_all())
+  with check (workspace_id = public.active_workspace_id() and public.crm_can_see_all());
+
+create policy "crm_goals: gestor gerencia cadência" on public.crm_goals
+  for all
+  using (
+    workspace_id = public.active_workspace_id() and public.crm_can_see_all() and owner_id is null
+    and metric in ('daily_approaches', 'weekly_approaches', 'weekly_new_leads', 'weekly_ad_leads', 'daily_ad_replies')
+  )
+  with check (
+    workspace_id = public.active_workspace_id() and public.crm_can_see_all() and owner_id is null
+    and metric in ('daily_approaches', 'weekly_approaches', 'weekly_new_leads', 'weekly_ad_leads', 'daily_ad_replies')
+  );
+
 alter table public.crm_opportunities enable row level security;
 create policy "crm_opportunities: todas ou próprias" on public.crm_opportunities
   for all using (

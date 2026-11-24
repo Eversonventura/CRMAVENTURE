@@ -30,3 +30,4 @@
 | Cadência: abordagens por semana, meta de leads de anúncio e responder leads de anúncio (Configurações + Diário); follow-ups acompanham as etapas do fluxo | 25 |
 | Meta e cartão Leads de anúncio recebidos (Metas do mês e Visão Geral) | 26 |
 | Convite sem e-mail gera acesso com senha temporária (copiar / WhatsApp), em vez de link | 27 |
+| Gestor configura cadência e follow-ups; perfil do negócio, meta olímpica e metas do mês só do administrador; vendedor sem acesso; migration 006 | 28 |

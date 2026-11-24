@@ -10,7 +10,7 @@ type Result = { error?: string };
 
 async function denied(): Promise<string | null> {
   const access = await getAccessContext();
-  return access.isFullAdmin ? null : "Só administradores podem configurar os follow-ups.";
+  return access.isManager ? null : "Só administrador e gestor configuram os follow-ups.";
 }
 
 export async function saveFollowupRule(

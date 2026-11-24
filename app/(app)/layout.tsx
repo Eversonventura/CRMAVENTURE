@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         userPhoto={profile?.photo_url ?? null}
         workspaces={access.workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
         activeId={access.workspaceId}
-        isAdmin={access.isFullAdmin}
+        isManager={access.isManager}
       />
       <div className="flex min-w-0 flex-1 flex-col pt-14 lg:pt-0">
         <main className="min-w-0 flex-1 p-5 sm:p-8">

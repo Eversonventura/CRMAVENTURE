@@ -12,7 +12,7 @@ const DEFAULT_APPROACH_GOAL = 10;
 
 export default async function ConfiguracoesPage() {
   const access = await getAccessContext();
-  if (!access.isFullAdmin) return <NoPermission />;
+  if (!access.isManager) return <NoPermission />;
 
   const supabase = await createClient();
   const [settings, { data: goalRows }, { data: ruleRows }, { data: stageRows }, { data: pipelineRows }, { data: allGoalRows }, { data: memberRows }] = await Promise.all([
@@ -46,6 +46,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <ConfigManager
+      isAdmin={access.isFullAdmin}
       model={settings.businessModel}
       segment={settings.segment}
       approaches={approaches}

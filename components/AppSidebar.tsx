@@ -24,9 +24,9 @@ import { SignOutButton } from "./SignOutButton";
 import { switchWorkspace } from "@/lib/workspace-actions";
 
 type WorkspaceOption = { id: string; name: string; role: string };
-type NavItem = { href: string; label: string; Icon: LucideIcon; adminOnly?: boolean };
+type NavItem = { href: string; label: string; Icon: LucideIcon; managerOnly?: boolean };
 
-// Menu do CRM. `adminOnly`: só o administrador da conta enxerga (e acessa).
+// Menu do CRM. `managerOnly`: só administrador e gestor enxergam (o vendedor não).
 const NAV_ITEMS: NavItem[] = [
   { href: "/crm/diario", label: "Diário", Icon: CalendarCheck },
   { href: "/crm/visao-geral", label: "Visão Geral", Icon: LayoutDashboard },
@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/crm/agenda", label: "Agenda", Icon: CalendarDays },
   { href: "/crm/propostas", label: "Propostas", Icon: FileText },
   { href: "/crm/mensagens", label: "Mensagens", Icon: MessageSquare },
-  { href: "/crm/configuracoes", label: "Configurações", Icon: Settings, adminOnly: true },
+  { href: "/crm/configuracoes", label: "Configurações", Icon: Settings, managerOnly: true },
 ];
 
 export function AppSidebar({
@@ -44,13 +44,13 @@ export function AppSidebar({
   userPhoto,
   workspaces,
   activeId,
-  isAdmin,
+  isManager,
 }: {
   userName: string;
   userPhoto: string | null;
   workspaces: WorkspaceOption[];
   activeId: string | null;
-  isAdmin: boolean;
+  isManager: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -67,7 +67,7 @@ export function AppSidebar({
     });
   }
 
-  const items = NAV_ITEMS.filter((i) => !i.adminOnly || isAdmin);
+  const items = NAV_ITEMS.filter((i) => !i.managerOnly || isManager);
   const linkClass = (active: boolean) =>
     `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition hover:bg-brand-soft hover:text-brand ${
       active ? "bg-brand-soft font-medium text-brand" : "text-muted"
