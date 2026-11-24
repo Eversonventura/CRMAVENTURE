@@ -507,11 +507,12 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
       {data.readOnly && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
           Você está vendo o Diário de <strong>{data.people.find((p) => p.id === data.personId)?.name ?? "outra pessoa"}</strong> só para
-          acompanhar. Abordagens, tarefas e metas são registradas por quem executa, cada um no seu Diário.
+          acompanhar. Abordagens, tarefas e metas são registradas por quem executa, cada um no seu Diário. Se ele faltar, você pode chamar os leads dele pelo link de WhatsApp.
         </p>
       )}
 
-      <div inert={data.readOnly} className="space-y-5">
+      {/* Só leitura: botões e campos ficam desativados; os links de WhatsApp continuam abertos (dá para chamar os leads de quem faltou). */}
+      <fieldset disabled={data.readOnly} className="m-0 min-w-0 space-y-5 border-0 p-0">
       <SalesCard sales={data.sales} />
 
       {data.overdue.length > 0 && (
@@ -920,7 +921,7 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           </div>
         )}
       </section>
-      </div>
+      </fieldset>
 
       {completing && (
         <CompleteTaskModal task={completing} teamMembers={teamMembers} onClose={() => setCompleting(null)} />
