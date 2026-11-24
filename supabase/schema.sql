@@ -64,36 +64,25 @@ create table public.workspace_invites (
 -- ---------------------------------------------------------------------------
 -- 2) Funções de contexto (conta ativa e papel do usuário)
 -- ---------------------------------------------------------------------------
+-- Uma pessoa trabalha numa conta só (Sprint 29; mesma coisa de supabase/migrations/007_conta_unica.sql).
+-- A conta "Conta de <nome>", criada automaticamente no cadastro, fica por último: vale a conta da empresa
+-- para a qual a pessoa foi convidada ou que o Hub criou. Não há troca de conta.
 create function public.active_workspace_id()
 returns uuid
 language plpgsql security definer stable
 set search_path = public
 as $$
-declare
-  h text;
-  w uuid;
 begin
   if auth.uid() is null then
     return null;
   end if;
 
-  begin
-    h := (current_setting('request.headers', true)::json ->> 'x-workspace-id');
-  exception when others then
-    h := null;
-  end;
-
-  if h is not null and h ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
-    w := h::uuid;
-    if exists (select 1 from public.team_members where workspace_id = w and profile_id = auth.uid()) then
-      return w;
-    end if;
-  end if;
-
   return (
-    select workspace_id from public.team_members
-     where profile_id = auth.uid()
-     order by created_at
+    select tm.workspace_id
+      from public.team_members tm
+      join public.workspaces w on w.id = tm.workspace_id
+     where tm.profile_id = auth.uid()
+     order by (w.owner_id = tm.profile_id and w.name like 'Conta de %'), tm.created_at
      limit 1
   );
 end;

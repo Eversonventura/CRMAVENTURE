@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { createClient } from "@/lib/supabase/client";
-import { setMyPhoto, switchWorkspace, updateMyName } from "@/lib/workspace-actions";
+import { setMyPhoto, updateMyName } from "@/lib/workspace-actions";
 
 type Role = "administrador" | "gestor" | "vendedor";
 type WorkspaceRow = { id: string; name: string; role: Role; isOwner: boolean };
@@ -149,15 +149,6 @@ export function ProfileManager({
     setPwdMsg({ kind: "ok", text: "Senha alterada." });
   }
 
-  function changeWorkspace(id: string) {
-    setFeedback(null);
-    start(async () => {
-      const result = await switchWorkspace(id);
-      if (result.error) return fail(result.error);
-      router.refresh();
-    });
-  }
-
   const msgClass = (kind: "ok" | "error") =>
     kind === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-brand/30 bg-brand-soft text-brand";
 
@@ -165,7 +156,7 @@ export function ProfileManager({
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
         <h1 className="font-display text-2xl font-medium text-ink">Meu perfil</h1>
-        <p className="mt-1.5 text-sm text-muted">Seus dados de acesso, sua foto e as contas (empresas) em que você trabalha.</p>
+        <p className="mt-1.5 text-sm text-muted">Seus dados de acesso, sua foto e a conta (empresa) em que você trabalha.</p>
       </div>
 
       {feedback && (
@@ -218,12 +209,12 @@ export function ProfileManager({
       </section>
 
       <section className="rounded-xl border border-border bg-surface p-5">
-        <h2 className="font-display text-base font-medium text-ink">Minhas contas (empresas)</h2>
+        <h2 className="font-display text-base font-medium text-ink">Minha conta (empresa)</h2>
         <p className="mt-1 text-xs text-muted">
-          Cada conta tem os próprios leads, fluxo e metas. Você pode participar de várias e alternar entre elas.
+          A conta tem os próprios leads, fluxo e metas. Você trabalha somente nela.
         </p>
         <ul className="mt-3 divide-y divide-border rounded-lg border border-border bg-white">
-          {workspaces.map((w) => {
+          {workspaces.filter((w) => w.id === activeId).map((w) => {
             const active = w.id === activeId;
             return (
               <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-sm">
@@ -236,11 +227,6 @@ export function ProfileManager({
                     {ROLE_LABELS[w.role]} · {w.isOwner ? "você é o dono" : "você foi convidado"}
                   </p>
                 </div>
-                {!active && (
-                  <button type="button" disabled={pending} onClick={() => changeWorkspace(w.id)} className={ghost}>
-                    Usar esta conta
-                  </button>
-                )}
               </li>
             );
           })}

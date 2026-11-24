@@ -21,7 +21,6 @@ import {
 import { Logo } from "./Logo";
 import { Avatar } from "./Avatar";
 import { SignOutButton } from "./SignOutButton";
-import { switchWorkspace } from "@/lib/workspace-actions";
 
 type WorkspaceOption = { id: string; name: string; role: string };
 type NavItem = { href: string; label: string; Icon: LucideIcon; managerOnly?: boolean };
@@ -42,30 +41,16 @@ const NAV_ITEMS: NavItem[] = [
 export function AppSidebar({
   userName,
   userPhoto,
-  workspaces,
-  activeId,
+  activeName,
   isManager,
 }: {
   userName: string;
   userPhoto: string | null;
-  workspaces: WorkspaceOption[];
-  activeId: string | null;
+  activeName: string | null;
   isManager: boolean;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function change(id: string) {
-    setError(null);
-    start(async () => {
-      const result = await switchWorkspace(id);
-      if (result.error) setError(result.error);
-      else router.refresh();
-    });
-  }
 
   const items = NAV_ITEMS.filter((i) => !i.managerOnly || isManager);
   const linkClass = (active: boolean) =>
@@ -111,23 +96,13 @@ export function AppSidebar({
           </button>
         </div>
 
-        {workspaces.length > 0 && (
-          <label className="mb-4 block space-y-1">
-            <span className="px-1 text-[11px] uppercase tracking-wide text-muted">Conta</span>
-            <select
-              value={activeId ?? ""}
-              disabled={pending}
-              onChange={(e) => change(e.target.value)}
-              className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm text-ink outline-none focus:border-brand"
-            >
-              {workspaces.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-            {error && <span className="block text-xs text-brand">{error}</span>}
-          </label>
+        {activeName && (
+          <div className="mb-4 px-1">
+            <span className="text-[11px] uppercase tracking-wide text-muted">Conta</span>
+            <p className="mt-0.5 truncate rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm text-ink" title={activeName}>
+              {activeName}
+            </p>
+          </div>
         )}
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">

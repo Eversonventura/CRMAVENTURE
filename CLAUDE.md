@@ -36,5 +36,5 @@ Comandos rodados e resultado; o que NÃO foi testado.
 
 ## Arquitetura (resumo)
 - Next.js 15 + Supabase + Vercel. Rotas em `app/(app)/crm/*`; conta/compartilhamento em `app/(app)/conta`.
-- Multi-conta: toda tabela tem `workspace_id` (default = conta ativa, vinda do header `x-workspace-id`) + RLS. `team_members` = membros da conta; papéis `administrador`/`gestor`/`vendedor`.
+- Multi-conta: toda tabela tem `workspace_id` (default = conta ativa) + RLS. **Não há troca de conta**: cada pessoa trabalha numa conta só; `active_workspace_id()` escolhe a conta da empresa e deixa a conta automática "Conta de <nome>" por último (mesma regra em `lib/access.ts`). O header `x-workspace-id` não é mais usado. `team_members` = membros da conta; papéis `administrador`/`gestor`/`vendedor`.
 - Novas tabelas precisam de `workspace_id uuid not null default public.active_workspace_id()` e policies por conta.

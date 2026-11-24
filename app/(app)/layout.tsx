@@ -16,8 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppSidebar
         userName={profile?.full_name || (user.user_metadata?.full_name as string | undefined) || user.email || ""}
         userPhoto={profile?.photo_url ?? null}
-        workspaces={access.workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
-        activeId={access.workspaceId}
+        activeName={access.workspaceName}
         isManager={access.isManager}
       />
       <div className="flex min-w-0 flex-1 flex-col pt-14 lg:pt-0">

@@ -55,6 +55,7 @@ remova nem mude o tipo sem combinar e atualizar o Hub junto:
 - Formulários por modelo (Sprint 16): `funil/OpportunityModal.tsx` e `contatos/*` mudam conforme B2B/B2C e segmento (provedor `CrmSettingsContext`); `form-fields.ts` faz as ações gravarem só os campos que o formulário mostrou. O Hub não tem isso: ao sincronizar mudanças desses formulários, aplique à mão respeitando `isB2C` e `showOnline`.
 - Mensagens (Sprint 17): `crm/mensagens/*`, `crm/messages.ts`, `funil/MessageSuggestions.tsx` e a tabela `crm_message_templates` não existem no Hub; o `ActivityTimeline` do card ganhou a sugestão de mensagem acima dele (em `OpportunityModal.tsx`).
 - Menu lateral (`components/AppSidebar.tsx`) no lugar das abas do topo; sem a aba Recebimentos.
+- Conta única (Sprint 29): sem seletor nem troca de conta; `active_workspace_id()` prefere a conta da empresa à conta automática "Conta de <nome>" (o gatilho `handle_new_user` e o nome "Conta de " continuam, o Hub depende deles).
 - `actions.ts`: excluir lead protege a empresa de vendedor; anexos por conta; e-mail via Resend.
 
 ## Estado de cada commit do CRM do Hub (desde `8b139b8`)

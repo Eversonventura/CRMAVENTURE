@@ -1,25 +1,14 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendCrmEmail } from "@/app/(app)/crm/email";
-import { cleanWorkspaceId, WS_COOKIE } from "@/lib/workspace";
 
 type Result = { error?: string; message?: string; credentials?: { email: string; password: string; loginUrl: string } };
-
-async function setActiveCookie(id: string) {
-  const store = await cookies();
-  store.set(WS_COOKIE, id, {
-    path: "/",
-    httpOnly: false, // o cliente do navegador também envia o header da conta
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365,
-  });
-}
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -28,26 +17,6 @@ function refresh() {
 // Mensagens de erro das RPCs já vêm em português (raise exception).
 function fail(error: { message: string }): Result {
   return { error: error.message };
-}
-
-export async function switchWorkspace(id: string): Promise<Result> {
-  const wanted = cleanWorkspaceId(id);
-  if (!wanted) return { error: "Conta inválida." };
-  const user = await getCurrentUser();
-  if (!user) return { error: "Sessão expirada. Entre de novo." };
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("profile_id", user.id)
-    .eq("workspace_id", wanted)
-    .maybeSingle();
-  if (!data) return { error: "Você não participa dessa conta." };
-
-  await setActiveCookie(wanted);
-  refresh();
-  return {};
 }
 
 export async function renameWorkspace(id: string, name: string): Promise<Result> {
@@ -62,8 +31,6 @@ export async function deleteWorkspace(id: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_workspace", { p_ws: id });
   if (error) return fail(error);
-  const store = await cookies();
-  store.delete(WS_COOKIE); // volta para a primeira conta da pessoa
   refresh();
   return {};
 }
@@ -204,10 +171,6 @@ export async function removeMember(memberId: string, leaving = false): Promise<R
   const supabase = await createClient();
   const { error } = await supabase.rpc("remove_member", { p_member_id: memberId });
   if (error) return fail(error);
-  if (leaving) {
-    const store = await cookies();
-    store.delete(WS_COOKIE);
-  }
   refresh();
   return {};
 }
