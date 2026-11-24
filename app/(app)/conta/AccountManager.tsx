@@ -49,19 +49,21 @@ export function AccountManager({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string; link?: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [name, setName] = useState(workspace.name);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("vendedor");
 
-  function run(action: () => Promise<{ error?: string; message?: string }>, after?: () => void) {
+  function run(action: () => Promise<{ error?: string; message?: string; link?: string }>, after?: () => void) {
     setFeedback(null);
+    setCopied(false);
     start(async () => {
       const result = await action();
       if (result.error) setFeedback({ kind: "error", text: result.error });
       else {
-        if (result.message) setFeedback({ kind: "ok", text: result.message });
+        if (result.message) setFeedback({ kind: "ok", text: result.message, link: result.link });
         after?.();
         router.refresh();
       }
@@ -79,14 +81,41 @@ export function AccountManager({
       </div>
 
       {feedback && (
-        <p
+        <div
           role="status"
           className={`rounded-lg border px-3.5 py-2.5 text-sm ${
             feedback.kind === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-brand/30 bg-brand-soft text-brand"
           }`}
         >
-          {feedback.text}
-        </p>
+          <p>{feedback.text}</p>
+          {feedback.link && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input readOnly value={feedback.link} onFocus={(e) => e.currentTarget.select()} className={`${input} min-w-0 flex-1 text-xs`} />
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(feedback.link!);
+                    setCopied(true);
+                  } catch {
+                    // sem permissão de área de transferência: o campo ao lado fica selecionável
+                  }
+                }}
+                className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white"
+              >
+                {copied ? "Copiado!" : "Copiar link"}
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Seu acesso ao avantecrm (o link vale por pouco tempo): ${feedback.link}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs text-ink"
+              >
+                Enviar por WhatsApp
+              </a>
+            </div>
+          )}
+        </div>
       )}
 
       <section className="rounded-xl border border-border bg-surface p-5">

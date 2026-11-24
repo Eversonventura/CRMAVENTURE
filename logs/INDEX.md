@@ -23,3 +23,4 @@
 | Renomeado "Funil" para "Fluxo" em todos os textos (menu, telas, metadados); rota e código internos mantidos | 18 |
 | Botão Metas sai da Visão Geral; metas do mês (equipe e por vendedor) viram seção em Configurações | 19 |
 | Compartilhar conta envia e-mail: convite do Supabase para quem não tem login; aviso (Resend) para quem já tem | 20 |
+| Convite mostra o link de acesso (copiar / WhatsApp) quando o e-mail não sai, sem depender de SMTP | 21 |

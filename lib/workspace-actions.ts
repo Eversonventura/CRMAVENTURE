@@ -8,7 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendCrmEmail } from "@/app/(app)/crm/email";
 import { cleanWorkspaceId, WS_COOKIE } from "@/lib/workspace";
 
-type Result = { error?: string; message?: string };
+type Result = { error?: string; message?: string; link?: string };
 
 async function setActiveCookie(id: string) {
   const store = await cookies();
@@ -106,15 +106,31 @@ export async function inviteMember(workspaceId: string, email: string, role: str
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { message: "Convite registrado, mas o envio de e-mail não está configurado. Peça para a pessoa criar o login com esse e-mail." };
   }
-  const { error: mailError } = await createServiceClient().auth.admin.inviteUserByEmail(to, {
-    redirectTo: `${origin}/auth/callback`,
-  });
-  if (mailError) {
+  const admin = createServiceClient().auth.admin;
+  const redirectTo = `${origin}/auth/callback`;
+  const { error: mailError } = await admin.inviteUserByEmail(to, { redirectTo });
+  if (!mailError) {
+    return { message: "Convite enviado por e-mail. A pessoa define a senha pelo link e já entra na conta." };
+  }
+
+  // O e-mail não saiu (ex.: SMTP do Supabase com problema ou no limite). Gera o link de acesso para você
+  // copiar e mandar por WhatsApp. Se o usuário já foi criado pela tentativa acima, usa o link mágico.
+  let link: string | undefined;
+  const invite = await admin.generateLink({ type: "invite", email: to, options: { redirectTo } });
+  link = invite.data?.properties?.action_link;
+  if (!link) {
+    const magic = await admin.generateLink({ type: "magiclink", email: to, options: { redirectTo } });
+    link = magic.data?.properties?.action_link;
+  }
+  if (link) {
     return {
-      message: `Convite registrado, mas o e-mail não saiu (${mailError.message}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
+      message: "O e-mail não saiu, mas o acesso está pronto. Copie o link abaixo e envie para a pessoa (WhatsApp, por exemplo). Ela define a senha e já entra na conta.",
+      link,
     };
   }
-  return { message: "Convite enviado por e-mail. A pessoa define a senha pelo link e já entra na conta." };
+  return {
+    message: `Convite registrado, mas o e-mail não saiu (${mailError.message}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
+  };
 }
 
 export async function cancelInvite(id: string): Promise<Result> {
