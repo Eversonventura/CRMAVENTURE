@@ -38,3 +38,4 @@
 | Origens dos leads personalizáveis por conta (adicionar, remover, marcar anúncio) em Configurações; migration 009 | 33 |
 | Importação de planilha: reconhece Nome, Telefone, Dia de entrada, Origem, Prioridade, Observação, Comentários (B2B e B2C), em lotes, sem duplicar por telefone | 34 |
 | Campo Data de entrada do lead; prioridade deixa de ser apagada ao editar o lead | 35 |
+| Fluxo ordenado pela data de entrada do lead (com botão para inverter); origens em ordem alfabética | 36 |
