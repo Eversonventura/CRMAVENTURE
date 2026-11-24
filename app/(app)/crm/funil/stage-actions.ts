@@ -5,10 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext, getCurrentUser } from "@/lib/access";
 import type { StageKind, StageRole } from "../types";
 
-// Edição da estrutura do fluxo (etapas e pipelines). A RLS de crm_stages e
-// crm_pipelines só deixa full admin escrever — aqui a checagem é pra dar
-// uma mensagem clara em vez de um update que "não pega" em silêncio (RLS
-// em update devolve 0 linhas, não erro).
+// Edição da estrutura do fluxo. Etapas: administrador e gestor. Pipelines: só o administrador.
+// A RLS já barra os demais — aqui a checagem é pra dar uma mensagem clara em vez de um update
+// que "não pega" em silêncio (RLS em update devolve 0 linhas, não erro).
 
 const KINDS: StageKind[] = ["open", "won", "lost"];
 const ROLES: StageRole[] = [
@@ -29,6 +28,14 @@ async function requireFullAdmin(): Promise<string | null> {
   if (!user) return "Sessão expirada. Entre de novo.";
   const access = await getAccessContext();
   if (!access.isFullAdmin) return "Só administradores podem editar etapas e pipelines.";
+  return null;
+}
+
+async function requireManager(): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (!user) return "Sessão expirada. Entre de novo.";
+  const access = await getAccessContext();
+  if (!access.isManager) return "Só administrador e gestor podem editar as etapas do fluxo.";
   return null;
 }
 
@@ -68,7 +75,7 @@ async function countOpportunitiesInStages(
 // Nova etapa entra antes da primeira etapa de ganho/perda — "Fechado" e
 // "Perdido" continuam sempre no fim do fluxo.
 export async function createStage(pipelineId: string, name: string): Promise<Result> {
-  const denied = await requireFullAdmin();
+  const denied = await requireManager();
   if (denied) return { error: denied };
   const trimmed = name.trim();
   if (!trimmed) return { error: "Dê um nome pra etapa." };
@@ -101,7 +108,7 @@ export async function updateStage(
   stageId: string,
   patch: { name?: string; kind?: StageKind; role?: StageRole | null }
 ): Promise<Result> {
-  const denied = await requireFullAdmin();
+  const denied = await requireManager();
   if (denied) return { error: denied };
 
   const update: Record<string, unknown> = {};
@@ -140,7 +147,7 @@ export async function updateStage(
 }
 
 export async function reorderStages(pipelineId: string, orderedIds: string[]): Promise<Result> {
-  const denied = await requireFullAdmin();
+  const denied = await requireManager();
   if (denied) return { error: denied };
 
   const supabase = await createClient();
@@ -163,7 +170,7 @@ export async function reorderStages(pipelineId: string, orderedIds: string[]): P
 // perdida). O histórico fica (FK ON DELETE SET NULL). Nunca deixa o fluxo
 // sem etapa de entrada, de ganho ou de perda.
 export async function deleteStage(stageId: string, destinationStageId: string): Promise<Result> {
-  const denied = await requireFullAdmin();
+  const denied = await requireManager();
   if (denied) return { error: denied };
   if (stageId === destinationStageId) return { error: "Escolha uma etapa de destino diferente." };
 

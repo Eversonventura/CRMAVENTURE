@@ -231,13 +231,15 @@ export function FunilBoard({
   pipelines,
   selectedPipelineId,
   canManage,
+  canManagePipelines,
 }: {
   stages: CrmStage[];
   opportunities: FunilOpportunityRow[];
   teamMembers: TeamMemberOption[];
   pipelines: PipelineOption[];
   selectedPipelineId: string;
-  canManage: boolean;
+  canManage: boolean; // administrador e gestor: etapas do fluxo
+  canManagePipelines: boolean; // só administrador
 }) {
   const router = useRouter();
   const byContracts = useCrmSettings().salesMode === "contratos";
@@ -393,13 +395,15 @@ export function FunilBoard({
               >
                 Etapas
               </button>
-              <button
-                type="button"
-                onClick={() => setManaging("pipelines")}
-                className="rounded-lg border border-border px-3 py-2 text-sm text-ink transition hover:border-brand"
-              >
-                Pipelines
-              </button>
+              {canManagePipelines && (
+                <button
+                  type="button"
+                  onClick={() => setManaging("pipelines")}
+                  className="rounded-lg border border-border px-3 py-2 text-sm text-ink transition hover:border-brand"
+                >
+                  Pipelines
+                </button>
+              )}
             </>
           )}
           <button

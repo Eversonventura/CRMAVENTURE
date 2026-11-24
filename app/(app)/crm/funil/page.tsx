@@ -166,7 +166,8 @@ export default async function CrmFunilPage({
       stages={stages}
       pipelines={pipelines}
       selectedPipelineId={selectedPipeline?.id ?? ""}
-      canManage={access.isFullAdmin}
+      canManage={access.isManager}
+      canManagePipelines={access.isFullAdmin}
       opportunities={oppRows}
       teamMembers={members}
     />

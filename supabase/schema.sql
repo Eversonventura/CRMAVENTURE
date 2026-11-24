@@ -972,6 +972,12 @@ grant execute on function public.invite_to_workspace(uuid, text, text) to authen
 grant execute on function public.cancel_invite(uuid) to authenticated;
 grant execute on function public.set_member_role(uuid, text) to authenticated;
 grant execute on function public.remove_member(uuid) to authenticated;
+-- Gestor também cria e edita as etapas do fluxo (Sprint 37; mesma coisa de supabase/migrations/010_gestor_etapas.sql).
+create policy "crm_stages: gestor gerencia" on public.crm_stages
+  for all
+  using (workspace_id = public.active_workspace_id() and public.crm_can_see_all())
+  with check (workspace_id = public.active_workspace_id() and public.crm_can_see_all());
+
 -- Origens (canais de aquisição) por conta (Sprint 33; mesma coisa de supabase/migrations/009_origens.sql).
 create table public.crm_acquisition_channels (
   id uuid primary key default gen_random_uuid(),
