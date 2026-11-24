@@ -7,6 +7,8 @@ import { ensureDailyPicks } from "./picks";
 import { brtMonthRange } from "../sales-goals";
 import { leadGaps } from "../lead-completeness";
 import { DiarioView, type DiarioData, type DiarioTask } from "./DiarioView";
+import { getCrmSettings } from "../settings";
+import { adChannelNames } from "../channels";
 import type { TeamMemberOption } from "../types";
 
 const DEFAULT_APPROACH_GOAL = 10;
@@ -436,8 +438,8 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     .filter((st) => st.pipeline_id === firstPipelineId)
     .map((st) => ({ id: st.id, name: st.name }));
 
-  // Leads de anúncio (canal "Tráfego pago"): responder por dia e captar por semana; abordagens da semana.
-  const AD_CHANNEL = "Tráfego pago";
+  // Leads de anúncio (origens marcadas como anúncio em Configurações): responder por dia e captar por semana.
+  const adNames = adChannelNames((await getCrmSettings()).channels);
   const [cadGoalsRes, adPendingRes, adRepliedRes, adWeekRes, weekApproachRes] = await Promise.all([
     supabase
       .from("crm_goals")
@@ -448,7 +450,7 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
       .from("crm_opportunities")
       .select("id, temperature, crm_companies(name), crm_contacts(name, whatsapp, phone)")
       .eq("status", "aberta")
-      .eq("acquisition_channel", AD_CHANNEL)
+      .in("acquisition_channel", adNames)
       .is("first_contact_at", null)
       .or(mine)
       .order("created_at")
@@ -456,13 +458,13 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     supabase
       .from("crm_opportunities")
       .select("id", { count: "exact", head: true })
-      .eq("acquisition_channel", AD_CHANNEL)
+      .in("acquisition_channel", adNames)
       .eq("responsible_id", personId)
       .gte("first_contact_at", startIso),
     supabase
       .from("crm_opportunities")
       .select("id", { count: "exact", head: true })
-      .eq("acquisition_channel", AD_CHANNEL)
+      .in("acquisition_channel", adNames)
       .gte("created_at", week.startIso)
       .lt("created_at", week.endIso),
     supabase

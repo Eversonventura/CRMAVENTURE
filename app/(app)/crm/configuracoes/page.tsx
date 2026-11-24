@@ -47,6 +47,7 @@ export default async function ConfiguracoesPage() {
   return (
     <ConfigManager
       isAdmin={access.isFullAdmin}
+      channels={settings.channels}
       model={settings.businessModel}
       segment={settings.segment}
       approaches={approaches}

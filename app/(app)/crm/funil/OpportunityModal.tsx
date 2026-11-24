@@ -10,7 +10,7 @@ import {
   type CrmFormState,
 } from "../actions";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
-import { ACQUISITION_CHANNELS, TEMPERATURE_LABELS, type CrmStage, type TeamMemberOption } from "../types";
+import { TEMPERATURE_LABELS, type CrmStage, type TeamMemberOption } from "../types";
 import type { FunilOpportunityRow } from "./FunilBoard";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { MessageSuggestions } from "./MessageSuggestions";
@@ -115,7 +115,7 @@ export function OpportunityModal({
   const [deleteError, setDeleteError] = useState("");
   const [channel, setChannel] = useState(opportunity?.acquisitionChannel ?? "");
   const isReferral = channel === "Indicação passiva" || channel === "Indicação ativa";
-  const isPaidTraffic = channel === "Tráfego pago";
+  const isPaidTraffic = settings.channels.some((c) => c.isAd && c.name === channel);
   const isEvent = channel === "Evento";
 
   useEffect(() => {
@@ -390,7 +390,8 @@ export function OpportunityModal({
                   className={inputClass}
                 >
                   <option value="">Selecione...</option>
-                  {ACQUISITION_CHANNELS.map((c) => (
+                  {/* Origem antiga que a conta já não usa continua aparecendo no lead que a tem */}
+                  {[...settings.channels.map((c) => c.name), ...(channel && !settings.channels.some((c) => c.name === channel) ? [channel] : [])].map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>

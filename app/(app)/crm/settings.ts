@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
+import { DEFAULT_CHANNELS, type Channel } from "./channels";
 import { DEFAULT_SETTINGS, type BusinessModel, type CrmSettings, type SalesMode } from "./business";
 
 // Configurações da conta ativa (modelo comercial e segmento). Qualquer membro lê;
@@ -25,6 +26,18 @@ export const getCrmSettings = cache(async (): Promise<CrmSettings> => {
     .maybeSingle();
   const salesMode: SalesMode = modeRow && Number(modeRow.target) === 1 ? "contratos" : "valor";
 
-  if (!data) return { ...DEFAULT_SETTINGS, salesMode };
-  return { businessModel: (data.business_model as BusinessModel) ?? "b2b", segment: (data.segment as string | null) ?? null, salesMode };
+  // Origens da conta (sem linhas = lista padrão).
+  const { data: channelRows } = await supabase
+    .from("crm_acquisition_channels")
+    .select("name, is_ad")
+    .eq("workspace_id", access.workspaceId)
+    .order("position")
+    .order("created_at");
+  const channels: Channel[] =
+    channelRows && channelRows.length > 0
+      ? (channelRows as { name: string; is_ad: boolean }[]).map((c) => ({ name: c.name, isAd: c.is_ad }))
+      : DEFAULT_CHANNELS;
+
+  if (!data) return { ...DEFAULT_SETTINGS, salesMode, channels };
+  return { businessModel: (data.business_model as BusinessModel) ?? "b2b", segment: (data.segment as string | null) ?? null, salesMode, channels };
 });

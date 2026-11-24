@@ -9,6 +9,8 @@ import { OlympicCard } from "./OlympicCard";
 import { activeOlympicTargets, olympicMode, readOlympicSettings } from "../olympic";
 import { isContract, monthlySales, type ReceivableSale } from "../olympic-sales";
 import { BarBlock, PieBlock, type ChartDatum } from "./CrmCharts";
+import { getCrmSettings } from "../settings";
+import { adChannelNames } from "../channels";
 
 // Visão geral + Relatórios numa página só, com período e metas coloridas.
 // Tudo é consultado por período / agregado (nada de varrer tabela inteira).
@@ -195,6 +197,8 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     return <p className="text-sm text-muted">Sem perfil de equipe vinculado.</p>;
   }
 
+  const adNames = adChannelNames((await getCrmSettings()).channels);
+
   const [
     goalsRes, stagesRes, pipelinesRes, membersRes,
     leadsPeriod, leadsAdPeriod, leadsToday, openRes, closedRes, lostRes,
@@ -206,7 +210,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     supabase.from("crm_pipelines").select("id, name").order("position"),
     supabase.rpc("team_member_picker_options"),
     supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).gte("created_at", startIso).lt("created_at", endIso),
-    supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("acquisition_channel", "Tráfego pago").gte("created_at", startIso).lt("created_at", endIso),
+    supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).in("acquisition_channel", adNames).gte("created_at", startIso).lt("created_at", endIso),
     supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).gte("created_at", today.startIso).lt("created_at", today.endIso),
     supabase.from("crm_opportunities").select("stage_id, estimated_value").eq("status", "aberta").limit(2000),
     supabase

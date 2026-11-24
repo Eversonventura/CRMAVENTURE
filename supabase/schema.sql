@@ -972,6 +972,24 @@ grant execute on function public.invite_to_workspace(uuid, text, text) to authen
 grant execute on function public.cancel_invite(uuid) to authenticated;
 grant execute on function public.set_member_role(uuid, text) to authenticated;
 grant execute on function public.remove_member(uuid) to authenticated;
+-- Origens (canais de aquisição) por conta (Sprint 33; mesma coisa de supabase/migrations/009_origens.sql).
+create table public.crm_acquisition_channels (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null default public.active_workspace_id() references public.workspaces(id) on delete cascade,
+  name text not null check (length(trim(name)) between 1 and 60),
+  is_ad boolean not null default false,
+  position int not null default 0,
+  created_at timestamptz not null default now(),
+  unique (workspace_id, name)
+);
+
+alter table public.crm_acquisition_channels enable row level security;
+create policy "crm_acquisition_channels: leitura" on public.crm_acquisition_channels
+  for select using (workspace_id = public.active_workspace_id());
+create policy "crm_acquisition_channels: administrador gerencia" on public.crm_acquisition_channels
+  for all using (workspace_id = public.active_workspace_id() and public.is_ws_admin())
+  with check (workspace_id = public.active_workspace_id() and public.is_ws_admin());
+
 -- Meta olímpica para todos (Sprint 32; mesma coisa de supabase/migrations/008_meta_olimpica_para_todos.sql).
 create function public.crm_month_deals(p_start timestamptz, p_end timestamptz)
 returns table (

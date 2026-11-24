@@ -9,6 +9,8 @@ import type { OlympicSettings } from "../olympic";
 import { saveBusinessProfile, saveCadence } from "./actions";
 import { FollowupRulesSection, type FollowupConfig } from "./FollowupRulesSection";
 import { OlympicSettingsForm } from "./OlympicSettingsForm";
+import { ChannelsSection } from "./ChannelsSection";
+import type { Channel } from "../channels";
 
 const field = "rounded-lg border border-border bg-surface2 px-3 py-2 text-sm text-ink outline-none focus:border-brand";
 const primary = "rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60";
@@ -163,6 +165,7 @@ function Cadence({
 
 export function ConfigManager({
   isAdmin,
+  channels,
   model,
   segment,
   approaches,
@@ -178,6 +181,7 @@ export function ConfigManager({
   memberGoals,
 }: {
   isAdmin: boolean;
+  channels: Channel[];
   model: BusinessModel;
   segment: string | null;
   approaches: number;
@@ -211,6 +215,16 @@ export function ConfigManager({
       >
         <BusinessProfile model={model} segment={segment} />
       </Section>
+      )}
+
+      {isAdmin && (
+        <Section
+          id="origens"
+          title="Origens dos leads"
+          hint="Os canais de aquisição do seu negócio, que aparecem ao cadastrar um lead. Adicione os seus e remova os que não usa. Marque como anúncio as origens pagas: elas alimentam Responder leads de anúncio e a meta de leads de anúncio."
+        >
+          <ChannelsSection channels={channels} />
+        </Section>
       )}
 
       <Section

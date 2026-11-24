@@ -35,3 +35,4 @@
 | Diário de outra pessoa é só leitura (tela e servidor): ninguém registra ações em nome de outro | 30 |
 | Diário de outra pessoa continua só leitura, mas com links de WhatsApp liberados | 31 |
 | Meta olímpica visível para todos (admin, gestor, vendedor), mês a mês, com total da equipe; função crm_month_deals; migration 008 | 32 |
+| Origens dos leads personalizáveis por conta (adicionar, remover, marcar anúncio) em Configurações; migration 009 | 33 |

@@ -1,3 +1,5 @@
+import { DEFAULT_CHANNELS, type Channel } from "./channels";
+
 // Perfil do negócio da conta (aba Configurações): modelo comercial e segmento.
 // Define quais campos aparecem nos formulários de contato e de oportunidade.
 export type BusinessModel = "b2b" | "b2c";
@@ -30,10 +32,10 @@ export const AGENCY_SEGMENT = "agencia_marketing";
 // Como a conta mede vendas: por valor (R$) ou por contratos fechados (sem preço). Vem da meta olímpica.
 export type SalesMode = "valor" | "contratos";
 
-export type CrmSettings = { businessModel: BusinessModel; segment: string | null; salesMode: SalesMode };
+export type CrmSettings = { businessModel: BusinessModel; segment: string | null; salesMode: SalesMode; channels: Channel[] };
 
 // Conta sem linha de configurações (ainda não definida): B2B sem segmento.
-export const DEFAULT_SETTINGS: CrmSettings = { businessModel: "b2b", segment: null, salesMode: "valor" };
+export const DEFAULT_SETTINGS: CrmSettings = { businessModel: "b2b", segment: null, salesMode: "valor", channels: DEFAULT_CHANNELS };
 
 // Redes sociais e site da empresa só fazem sentido para agência de marketing (B2B).
 export const showCompanyOnlineFields = (s: CrmSettings) => s.businessModel === "b2b" && s.segment === AGENCY_SEGMENT;
