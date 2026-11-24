@@ -108,7 +108,8 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
 
   // Sem prospecção no fim de semana: não sorteia abordagens.
   const ensurePicks: Promise<void> =
-    isBusinessDay && !offToday ? ensureDailyPicks(supabase, personId, date, approachGoal) : Promise.resolve();
+    // Só sorteia as abordagens de quem está vendo o próprio Diário (olhar o de outra pessoa não altera nada).
+    isBusinessDay && !offToday && personId === crm.teamMemberId ? ensureDailyPicks(supabase, personId, date, approachGoal) : Promise.resolve();
 
   const TASK_SELECT =
     "id, opportunity_id, type, responsible_id, due_at, priority, description, status, activity_result, created_at, source, stage_id, crm_stages(name, role), crm_opportunities(status, temperature, estimated_value, crm_companies(name), crm_contacts(whatsapp, phone))";
@@ -496,6 +497,8 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
 
   const data: DiarioData = {
     personId,
+    // Administrador/gestor vê o Diário dos outros, mas só lê: nada é registrado em nome de outra pessoa.
+    readOnly: personId !== crm.teamMemberId,
     people: crm.canSeeAll ? members.map((m) => ({ id: m.id, name: m.full_name })) : [],
     date,
     weekend: !isBusinessDay,

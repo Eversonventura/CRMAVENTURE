@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
+import { getCrmAccessContext } from "../lib";
 import { addManualActivity, moveOpportunityStage, registerContactAttempt } from "../actions";
 import { findPipelineStage } from "../stage-lookup";
 import type { FunilOpportunityRow } from "../funil/FunilBoard";
@@ -14,10 +15,18 @@ import { addDays, brtDateOf, MEETING_TYPES, planOffDayReschedule } from "./off-d
 
 type Result = { error?: string };
 
+// Ninguém registra nada no Diário de outra pessoa (nem o administrador): evita alterar os números dela.
+async function notSelf(personId: string): Promise<Result | null> {
+  const crm = await getCrmAccessContext();
+  return crm.teamMemberId && crm.teamMemberId === personId ? null : { error: "Você só registra ações no seu próprio Diário." };
+}
+
 // "Abordei": se o lead não tem responsável, ele passa a ser de quem abordou;
 // depois reaproveita o fluxo de sempre (vai pra Tentativa de contato, o
 // trigger grava first_contact_at e a regra da etapa agenda o follow-up).
 export async function approachLead(opportunityId: string, personId: string): Promise<Result> {
+  const denied = await notSelf(personId);
+  if (denied) return denied;
   const supabase = await createClient();
   await supabase
     .from("crm_opportunities")
@@ -32,6 +41,8 @@ export async function approachLead(opportunityId: string, personId: string): Pro
 }
 
 export async function swapPick(opportunityId: string, personId: string, pickDate: string): Promise<Result> {
+  const denied = await notSelf(personId);
+  if (denied) return denied;
   const supabase = await createClient();
   const { error } = await supabase
     .from("crm_daily_picks")
@@ -183,6 +194,8 @@ export async function setOffDays(
   dates: string[],
   reason: string | null
 ): Promise<Result & { moved?: number }> {
+  const denied = await notSelf(personId);
+  if (denied) return denied;
   const today = brtToday().date;
   const wanted = Array.from(new Set(dates)).filter((d) => DATE_RE.test(d) && d >= today);
   if (wanted.length === 0) return { error: "Escolha ao menos um dia (hoje ou futuro)." };
@@ -257,6 +270,8 @@ export async function setOffDays(
 // Desfaz a marcação. As tarefas que já foram reagendadas continuam nas
 // novas datas.
 export async function clearOffDay(personId: string, date: string): Promise<Result> {
+  const denied = await notSelf(personId);
+  if (denied) return denied;
   if (!DATE_RE.test(date)) return { error: "Data inválida." };
   const supabase = await createClient();
   const { error } = await supabase.from("crm_off_days").delete().eq("responsible_id", personId).eq("off_date", date);
@@ -296,6 +311,8 @@ export type ApproachInput = {
 // observação na linha do tempo, (3) agenda a próxima aproximação como um
 // follow-up manual da oportunidade (aparece no Diário no dia).
 export async function registerApproach(input: ApproachInput): Promise<Result> {
+  const denied = await notSelf(input.personId);
+  if (denied) return denied;
   const supabase = await createClient();
   const note = input.note?.trim() ?? "";
   if (note.length > 900) return { error: "Observação: máximo de 900 caracteres." };

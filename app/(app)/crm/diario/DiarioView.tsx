@@ -26,6 +26,7 @@ export type DiarioTask = CrmTask & {
 
 export type DiarioData = {
   personId: string;
+  readOnly: boolean;
   people: { id: string; name: string }[];
   date: string;
   weekend: boolean;
@@ -487,7 +488,9 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
               ))}
             </select>
           )}
-          <OffDaysControl data={data} />
+          <div inert={data.readOnly}>
+            <OffDaysControl data={data} />
+          </div>
           {data.canEditGoals && (
             <Link
               href="/crm/configuracoes#cadencia"
@@ -501,6 +504,14 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
 
       {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}
 
+      {data.readOnly && (
+        <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+          Você está vendo o Diário de <strong>{data.people.find((p) => p.id === data.personId)?.name ?? "outra pessoa"}</strong> só para
+          acompanhar. Abordagens, tarefas e metas são registradas por quem executa, cada um no seu Diário.
+        </p>
+      )}
+
+      <div inert={data.readOnly} className="space-y-5">
       <SalesCard sales={data.sales} />
 
       {data.overdue.length > 0 && (
@@ -909,6 +920,7 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           </div>
         )}
       </section>
+      </div>
 
       {completing && (
         <CompleteTaskModal task={completing} teamMembers={teamMembers} onClose={() => setCompleting(null)} />

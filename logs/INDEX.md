@@ -32,3 +32,4 @@
 | Convite sem e-mail gera acesso com senha temporária (copiar / WhatsApp), em vez de link | 27 |
 | Gestor configura cadência e follow-ups; perfil do negócio, meta olímpica e metas do mês só do administrador; vendedor sem acesso; migration 006 | 28 |
 | Conta única por pessoa: sem seletor nem troca de conta; a conta da empresa vale mais que a conta automática; migration 007 | 29 |
+| Diário de outra pessoa é só leitura (tela e servidor): ninguém registra ações em nome de outro | 30 |
