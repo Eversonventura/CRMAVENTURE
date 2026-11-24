@@ -29,3 +29,4 @@
 | Modo contratos no sistema todo: conta fechamento sem valor, fluxo/Diário/Visão Geral/metas sem preço, Contrato fechado sem modal de pagamento | 24 |
 | Cadência: abordagens por semana, meta de leads de anúncio e responder leads de anúncio (Configurações + Diário); follow-ups acompanham as etapas do fluxo | 25 |
 | Meta e cartão Leads de anúncio recebidos (Metas do mês e Visão Geral) | 26 |
+| Convite sem e-mail gera acesso com senha temporária (copiar / WhatsApp), em vez de link | 27 |

@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendCrmEmail } from "@/app/(app)/crm/email";
 import { cleanWorkspaceId, WS_COOKIE } from "@/lib/workspace";
 
-type Result = { error?: string; message?: string; link?: string };
+type Result = { error?: string; message?: string; credentials?: { email: string; password: string; loginUrl: string } };
 
 async function setActiveCookie(id: string) {
   const store = await cookies();
@@ -74,21 +75,36 @@ async function siteOrigin() {
   return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? (host ? `${proto}://${host}` : "");
 }
 
-type LinkType = "invite" | "recovery" | "magiclink";
+// Senha temporária legível (sem caracteres ambíguos como 0/O e 1/l).
+function tempPassword() {
+  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(12);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
 
-// Gera o acesso SEM mandar e-mail. O link aponta para o próprio CRM com o token (token_hash) e só
-// valida quando a pessoa abre a página: assim a prévia do WhatsApp ou o antivírus do e-mail não
-// "gastam" o link antes dela (o link direto do Supabase é de uso único e expira rápido).
-async function buildAccessLink(email: string, origin: string, types: LinkType[]): Promise<{ link?: string; error?: string }> {
-  const admin = createServiceClient().auth.admin;
-  let lastError: string | undefined;
-  for (const type of types) {
-    const res = await admin.generateLink({ type, email, options: { redirectTo: `${origin}/auth/callback` } });
-    const hashed = res.data?.properties?.hashed_token;
-    if (hashed) return { link: `${origin}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=${type}` };
-    lastError = res.error?.message ?? lastError;
+// Cria (ou, se a pessoa nunca entrou, redefine) o acesso com uma senha temporária, SEM e-mail e SEM link:
+// funciona mesmo sem SMTP e não expira. Só para quem ainda não fez login, para que um administrador
+// nunca consiga assumir o acesso de outra pessoa. O gatilho handle_new_user já coloca a pessoa na conta.
+async function provisionTempAccess(email: string): Promise<{ password?: string; error?: string }> {
+  const svc = createServiceClient();
+  const password = tempPassword();
+  const { data: prof } = await svc.from("profiles").select("id").eq("email", email).maybeSingle();
+  if (prof) {
+    const { data: u } = await svc.auth.admin.getUserById((prof as { id: string }).id);
+    if (!u?.user) return { error: "Login dessa pessoa não encontrado." };
+    if (u.user.last_sign_in_at) {
+      return { error: 'Essa pessoa já acessou o sistema. Para trocar a senha, ela usa "Esqueci minha senha" na tela de login.' };
+    }
+    const { error } = await svc.auth.admin.updateUserById(u.user.id, { password, email_confirm: true });
+    return error ? { error: error.message } : { password };
   }
-  return { error: lastError };
+  const { error } = await svc.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: email.split("@")[0] },
+  });
+  return error ? { error: error.message } : { password };
 }
 
 export async function inviteMember(workspaceId: string, email: string, role: string): Promise<Result> {
@@ -130,46 +146,42 @@ export async function inviteMember(workspaceId: string, email: string, role: str
     return { message: "Convite enviado por e-mail. A pessoa define a senha pelo link e já entra na conta." };
   }
 
-  // O e-mail não saiu (ex.: SMTP do Supabase com problema ou no limite). Gera o link de acesso para você
-  // copiar e mandar por WhatsApp. Se o usuário já foi criado pela tentativa acima, usa o link de recuperação.
-  const { link, error: linkError } = await buildAccessLink(to, origin, ["invite", "recovery", "magiclink"]);
-  if (link) {
+  // O e-mail não saiu (ex.: SMTP do Supabase com problema ou no limite). Cria o acesso com senha temporária
+  // para você mandar por WhatsApp.
+  const access = await provisionTempAccess(to);
+  if (access.password) {
     return {
-      message: "O e-mail não saiu, mas o acesso está pronto. Copie o link abaixo e envie para a pessoa (WhatsApp, por exemplo). Ela define a senha e já entra na conta.",
-      link,
+      message: "O e-mail não saiu, mas o acesso está pronto. Envie o e-mail e a senha temporária abaixo para a pessoa; ela entra pelo login e troca a senha em Perfil.",
+      credentials: { email: to, password: access.password, loginUrl: `${origin}/login` },
     };
   }
   return {
-    message: `Convite registrado, mas o e-mail não saiu (${mailError.message}) e o link de acesso também não pôde ser gerado (${linkError ?? "sem detalhe"}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
+    message: `Convite registrado, mas o e-mail não saiu (${mailError.message}) e o acesso com senha temporária também não pôde ser criado (${access.error ?? "sem detalhe"}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
   };
 }
 
-// Novo link de acesso para quem foi convidado e ainda NÃO entrou (o anterior expirou ou foi gasto).
-// Só vale para quem nunca fez login: assim um administrador não consegue entrar como outra pessoa.
+// Novo acesso (senha temporária) para quem foi convidado e ainda NÃO entrou.
 export async function generateAccessLink(memberId: string): Promise<Result> {
   const access = await getAccessContext();
-  if (!access.isFullAdmin) return { error: "Só o administrador gera links de acesso." };
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: "Geração de link não configurada (falta a chave de serviço)." };
+  if (!access.isFullAdmin) return { error: "Só o administrador gera acessos." };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { error: "Geração de acesso não configurada (falta a chave de serviço)." };
 
   const supabase = await createClient();
   const { data: member } = await supabase
     .from("team_members")
-    .select("profile_id, email")
+    .select("email")
     .eq("id", memberId)
     .eq("workspace_id", access.workspaceId ?? "")
     .maybeSingle();
-  const m = member as { profile_id: string; email: string | null } | null;
-  if (!m?.email) return { error: "Pessoa não encontrada nesta conta." };
+  const email = (member as { email: string | null } | null)?.email?.toLowerCase();
+  if (!email) return { error: "Pessoa não encontrada nesta conta." };
 
-  const { data: u } = await createServiceClient().auth.admin.getUserById(m.profile_id);
-  if (!u?.user) return { error: "Login dessa pessoa não encontrado." };
-  if (u.user.last_sign_in_at) {
-    return { error: "Essa pessoa já acessou o sistema. Para recuperar a senha, ela usa \"Esqueci minha senha\" na tela de login." };
-  }
-
-  const { link, error } = await buildAccessLink(m.email.toLowerCase(), await siteOrigin(), ["recovery", "magiclink", "invite"]);
-  if (!link) return { error: `Não foi possível gerar o link (${error ?? "sem detalhe"}).` };
-  return { message: "Novo link de acesso gerado. Copie e envie para a pessoa; ela define a senha e entra.", link };
+  const result = await provisionTempAccess(email);
+  if (!result.password) return { error: result.error ?? "Não foi possível gerar o acesso." };
+  return {
+    message: "Acesso gerado. Envie o e-mail e a senha temporária abaixo para a pessoa; ela entra pelo login e troca a senha em Perfil.",
+    credentials: { email, password: result.password, loginUrl: `${await siteOrigin()}/login` },
+  };
 }
 
 export async function cancelInvite(id: string): Promise<Result> {

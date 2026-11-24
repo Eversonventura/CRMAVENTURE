@@ -50,21 +50,21 @@ export function AccountManager({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string; link?: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string; credentials?: { email: string; password: string; loginUrl: string } } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [name, setName] = useState(workspace.name);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("vendedor");
 
-  function run(action: () => Promise<{ error?: string; message?: string; link?: string }>, after?: () => void) {
+  function run(action: () => Promise<{ error?: string; message?: string; credentials?: { email: string; password: string; loginUrl: string } }>, after?: () => void) {
     setFeedback(null);
     setCopied(false);
     start(async () => {
       const result = await action();
       if (result.error) setFeedback({ kind: "error", text: result.error });
       else {
-        if (result.message) setFeedback({ kind: "ok", text: result.message, link: result.link });
+        if (result.message) setFeedback({ kind: "ok", text: result.message, credentials: result.credentials });
         after?.();
         router.refresh();
       }
@@ -89,33 +89,39 @@ export function AccountManager({
           }`}
         >
           <p>{feedback.text}</p>
-          {feedback.link && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <input readOnly value={feedback.link} onFocus={(e) => e.currentTarget.select()} className={`${input} min-w-0 flex-1 text-xs`} />
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(feedback.link!);
-                    setCopied(true);
-                  } catch {
-                    // sem permissão de área de transferência: o campo ao lado fica selecionável
-                  }
-                }}
-                className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white"
-              >
-                {copied ? "Copiado!" : "Copiar link"}
-              </button>
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Seu acesso ao avantecrm (o link vale por pouco tempo): ${feedback.link}`)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs text-ink"
-              >
-                Enviar por WhatsApp
-              </a>
-            </div>
-          )}
+          {feedback.credentials && (() => {
+            const c = feedback.credentials;
+            const text = `Seu acesso ao avantecrm:\nEndereço: ${c.loginUrl}\nE-mail: ${c.email}\nSenha temporária: ${c.password}\n(depois de entrar, troque a senha em Perfil)`;
+            return (
+              <div className="mt-2 space-y-2">
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-white p-2.5 text-xs text-ink">{text}</pre>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(text);
+                        setCopied(true);
+                      } catch {
+                        // sem permissão: selecione o texto acima e copie
+                      }
+                    }}
+                    className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    {copied ? "Copiado!" : "Copiar"}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs text-ink"
+                  >
+                    Enviar por WhatsApp
+                  </a>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -181,9 +187,9 @@ export function AccountManager({
                       disabled={pending}
                       onClick={() => run(() => generateAccessLink(m.id))}
                       className="text-xs text-muted hover:text-brand"
-                      title="Para quem foi convidado e ainda não entrou: gera um link novo de acesso"
+                      title="Para quem foi convidado e ainda não entrou: gera e-mail e senha temporária"
                     >
-                      Novo link de acesso
+                      Gerar acesso (senha)
                     </button>
                   )}
                   {!isOwner && (isAdmin || isMe) && (
