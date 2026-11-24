@@ -32,3 +32,36 @@ export async function saveBusinessProfile(model: BusinessModel, segment: string 
   revalidatePath("/crm", "layout");
   return {};
 }
+
+export type CadenceInput = {
+  approaches: number; // novas abordagens por dia
+  weeklyApproaches: number; // abordagens por semana
+  weeklyLeads: number; // leads novos por semana (abastecer o fluxo)
+  weeklyAdLeads: number; // leads de anúncio por semana (meta de captação)
+  dailyAdReplies: number; // responder leads de anúncio por dia
+};
+
+// Cadência do Diário (só administrador): cada meta é um registro em crm_goals (owner nulo).
+export async function saveCadence(input: CadenceInput): Promise<{ error?: string }> {
+  const access = await getAccessContext();
+  if (!access.isFullAdmin) return { error: "Só o administrador da conta altera a cadência." };
+  const values: [string, number][] = [
+    ["daily_approaches", input.approaches],
+    ["weekly_approaches", input.weeklyApproaches],
+    ["weekly_new_leads", input.weeklyLeads],
+    ["weekly_ad_leads", input.weeklyAdLeads],
+    ["daily_ad_replies", input.dailyAdReplies],
+  ];
+  if (values.some(([, v]) => !Number.isInteger(v) || v < 0)) return { error: "Use números inteiros (0 ou mais)." };
+
+  const supabase = await createClient();
+  for (const [metric, target] of values) {
+    const { data: existing } = await supabase.from("crm_goals").select("id").eq("metric", metric).is("owner_id", null).maybeSingle();
+    const { error } = existing
+      ? await supabase.from("crm_goals").update({ target, updated_at: new Date().toISOString() }).eq("id", existing.id)
+      : await supabase.from("crm_goals").insert({ metric, target, direction: "higher" });
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/crm/diario");
+  return {};
+}

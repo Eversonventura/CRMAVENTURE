@@ -27,3 +27,4 @@
 | Configurações: salvar confirma lendo de volta, nunca trava, sempre mostra mensagem; leitura filtra pela conta | 22 |
 | Link de acesso passa pelo CRM (token_hash) e não é gasto por prévia; botão Novo link de acesso para quem ainda não entrou | 23 |
 | Modo contratos no sistema todo: conta fechamento sem valor, fluxo/Diário/Visão Geral/metas sem preço, Contrato fechado sem modal de pagamento | 24 |
+| Cadência: abordagens por semana, meta de leads de anúncio e responder leads de anúncio (Configurações + Diário); follow-ups acompanham as etapas do fluxo | 25 |

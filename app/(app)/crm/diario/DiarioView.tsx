@@ -43,7 +43,15 @@ export type DiarioData = {
     goalClosings: { target: number; personal: boolean } | null;
     goalRevenue: { target: number; personal: boolean } | null;
   };
+  ads: {
+    replyGoal: number;
+    repliedToday: number;
+    pending: { opportunityId: string; companyName: string; contactName: string | null; temperature: string | null; whatsapp: string | null }[];
+    weeklyGoal: number;
+    receivedWeek: number;
+  };
   approach: {
+    weekly: { goal: number; done: number };
     goal: number;
     done: number;
     picks: {
@@ -540,6 +548,11 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           </SectionTitle>
           <Progress done={approach.done} goal={approach.goal} />
         </div>
+        {approach.weekly.goal > 0 && (
+          <p className="mb-3 text-xs text-muted">
+            Semana: <strong className="text-ink">{approach.weekly.done}</strong> de {approach.weekly.goal} abordagens
+          </p>
+        )}
         {approach.picks.length === 0 ? (
           <p className="text-sm text-muted">Nenhum lead novo disponível pra abordar.</p>
         ) : (
@@ -596,6 +609,50 @@ export function DiarioView({ data, teamMembers }: { data: DiarioData; teamMember
           </div>
         )}
       </section>
+      )}
+
+      {(data.ads.replyGoal > 0 || data.ads.weeklyGoal > 0 || data.ads.pending.length > 0) && (
+        <section className={card}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle hint="Leads que chegaram por anúncio (canal Tráfego pago) e ainda não receberam resposta. Responda rápido: lead de anúncio esfria em minutos.">
+              Responder leads de anúncio
+            </SectionTitle>
+            {data.ads.replyGoal > 0 && <Progress done={data.ads.repliedToday} goal={data.ads.replyGoal} />}
+          </div>
+          {data.ads.weeklyGoal > 0 && (
+            <p className="mb-3 text-xs text-muted">
+              Leads de anúncio recebidos na semana: <strong className="text-ink">{data.ads.receivedWeek}</strong> de {data.ads.weeklyGoal}
+            </p>
+          )}
+          {data.ads.pending.length === 0 ? (
+            <p className="text-sm text-muted">Nenhum lead de anúncio esperando resposta. 🎉</p>
+          ) : (
+            <div className="space-y-2">
+              {data.ads.pending.map((l) => (
+                <div key={l.opportunityId} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-white p-2.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-ink">
+                      <ClientName id={l.opportunityId} name={l.companyName} onOpen={openCard} />
+                      {l.contactName && <span className="font-normal text-muted"> · {l.contactName}</span>}
+                    </p>
+                    <p className="text-xs text-muted">{l.temperature ? TEMP_LABEL[l.temperature] : "sem temperatura"}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <WhatsappLink number={l.whatsapp} />
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => setApproachModal({ mode: "lead", opportunityId: l.opportunityId, companyName: l.companyName })}
+                      className="rounded-md bg-brand px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand/90 disabled:opacity-60"
+                    >
+                      Respondi
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {data.enrich && (

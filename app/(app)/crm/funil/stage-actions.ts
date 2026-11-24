@@ -35,6 +35,8 @@ async function requireFullAdmin(): Promise<string | null> {
 function refresh() {
   revalidatePath("/crm/funil");
   revalidatePath("/crm/visao-geral");
+  revalidatePath("/crm/configuracoes"); // follow-ups por etapa listam as etapas do fluxo
+  revalidatePath("/crm/tarefas");
 }
 
 type StageRow = { id: string; position: number; kind: StageKind; role: StageRole | null; pipeline_id: string };

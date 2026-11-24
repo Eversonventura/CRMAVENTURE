@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { BUSINESS_MODEL_LABELS, SEGMENTS, type BusinessModel, type SalesMode } from "../business";
 import { GoalsForm } from "../GoalsForm";
 import type { SalesGoalMap } from "../sales-goals";
-import { saveDailyGoals } from "../diario/actions";
 import type { OlympicSettings } from "../olympic";
-import { saveBusinessProfile } from "./actions";
+import { saveBusinessProfile, saveCadence } from "./actions";
 import { FollowupRulesSection, type FollowupConfig } from "./FollowupRulesSection";
 import { OlympicSettingsForm } from "./OlympicSettingsForm";
 
@@ -91,19 +90,39 @@ function BusinessProfile({ model: initialModel, segment: initialSegment }: { mod
   );
 }
 
-function Cadence({ approaches: a0, weekly: w0 }: { approaches: number; weekly: number }) {
+function Cadence({
+  approaches: a0,
+  weeklyApproaches: wa0,
+  weekly: w0,
+  weeklyAdLeads: wl0,
+  dailyAdReplies: dr0,
+}: {
+  approaches: number;
+  weeklyApproaches: number;
+  weekly: number;
+  weeklyAdLeads: number;
+  dailyAdReplies: number;
+}) {
   const router = useRouter();
   const [approaches, setApproaches] = useState(String(a0));
+  const [weeklyApproaches, setWeeklyApproaches] = useState(String(wa0));
   const [weekly, setWeekly] = useState(String(w0));
+  const [weeklyAdLeads, setWeeklyAdLeads] = useState(String(wl0));
+  const [dailyAdReplies, setDailyAdReplies] = useState(String(dr0));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   async function save() {
     setBusy(true);
     setMsg(null);
-    // Metas de follow-up por etapa ficam na seção "Follow-ups" (campo Meta/dia de cada etapa).
     try {
-      const result = await saveDailyGoals(Number(approaches), [], Number(weekly));
+      const result = await saveCadence({
+        approaches: Number(approaches),
+        weeklyApproaches: Number(weeklyApproaches),
+        weeklyLeads: Number(weekly),
+        weeklyAdLeads: Number(weeklyAdLeads),
+        dailyAdReplies: Number(dailyAdReplies),
+      });
       setMsg(result.error ? { kind: "error", text: result.error } : { kind: "ok", text: "Cadência salva." });
       if (!result.error) router.refresh();
     } catch {
@@ -113,17 +132,24 @@ function Cadence({ approaches: a0, weekly: w0 }: { approaches: number; weekly: n
     }
   }
 
+  const row = (label: string, hint: string, value: string, set: (v: string) => void) => (
+    <label className="flex items-center justify-between gap-3">
+      <span className="text-ink">
+        {label}
+        <span className="block text-xs text-muted">{hint}</span>
+      </span>
+      <input type="number" min={0} value={value} onChange={(e) => set(e.target.value)} className={`${field} w-24`} />
+    </label>
+  );
+
   return (
     <div>
-      <div className="max-w-md space-y-3 text-sm">
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-ink">Novas abordagens por dia</span>
-          <input type="number" min={0} value={approaches} onChange={(e) => setApproaches(e.target.value)} className={`${field} w-24`} />
-        </label>
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-ink">Leads novos por semana</span>
-          <input type="number" min={0} value={weekly} onChange={(e) => setWeekly(e.target.value)} className={`${field} w-24`} />
-        </label>
+      <div className="max-w-xl space-y-3 text-sm">
+        {row("Novas abordagens por dia", "Contatos ativos que cada pessoa faz por dia.", approaches, setApproaches)}
+        {row("Abordagens por semana", "Meta da semana (padrão: 5 dias × a meta diária).", weeklyApproaches, setWeeklyApproaches)}
+        {row("Leads novos por semana", "Para abastecer o fluxo (prospecção).", weekly, setWeekly)}
+        {row("Leads de anúncio por semana", "Meta de captação por anúncios (canal Tráfego pago). 0 = sem meta.", weeklyAdLeads, setWeeklyAdLeads)}
+        {row("Responder leads de anúncio por dia", "Quantos leads de anúncio responder por dia. 0 = sem meta.", dailyAdReplies, setDailyAdReplies)}
       </div>
       <div className="mt-4 flex items-center gap-3">
         <button type="button" disabled={busy} onClick={save} className={primary}>
@@ -140,6 +166,9 @@ export function ConfigManager({
   segment,
   approaches,
   weekly,
+  weeklyApproaches,
+  weeklyAdLeads,
+  dailyAdReplies,
   olympic,
   followups,
   salesMode,
@@ -151,6 +180,9 @@ export function ConfigManager({
   segment: string | null;
   approaches: number;
   weekly: number;
+  weeklyApproaches: number;
+  weeklyAdLeads: number;
+  dailyAdReplies: number;
   olympic: OlympicSettings;
   followups: FollowupConfig;
   salesMode: SalesMode;
@@ -176,9 +208,9 @@ export function ConfigManager({
       <Section
         id="cadencia"
         title="Cadência do Diário"
-        hint="Quanto o time deve prospectar por dia e por semana. Mude conforme a estratégia do momento (ex.: menos abordagens, mais follow-ups)."
+        hint="Quanto o time deve abordar, captar e responder por dia e por semana. Quem trabalha mais com anúncios pode reduzir as abordagens e dar meta para responder leads de anúncio."
       >
-        <Cadence approaches={approaches} weekly={weekly} />
+        <Cadence approaches={approaches} weeklyApproaches={weeklyApproaches} weekly={weekly} weeklyAdLeads={weeklyAdLeads} dailyAdReplies={dailyAdReplies} />
       </Section>
 
       <Section
@@ -200,7 +232,7 @@ export function ConfigManager({
       <Section
         id="follow-ups"
         title="Follow-ups por etapa"
-        hint="Quando um card entra numa etapa, a tarefa da regra é agendada sozinha; ao sair da etapa, a tarefa automática pendente dela é cancelada. Tarefas criadas à mão nunca são mexidas. Mover o card continua manual."
+        hint="Cada etapa do seu fluxo aparece aqui (etapa nova entra sozinha). Quando um card entra numa etapa, a tarefa da regra é agendada sozinha; ao sair da etapa, a tarefa automática pendente dela é cancelada. Tarefas criadas à mão nunca são mexidas. Mover o card continua manual."
       >
         <FollowupRulesSection config={followups} />
       </Section>

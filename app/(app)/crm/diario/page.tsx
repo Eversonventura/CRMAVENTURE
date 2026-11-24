@@ -435,6 +435,65 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     .filter((st) => st.pipeline_id === firstPipelineId)
     .map((st) => ({ id: st.id, name: st.name }));
 
+  // Leads de anúncio (canal "Tráfego pago"): responder por dia e captar por semana; abordagens da semana.
+  const AD_CHANNEL = "Tráfego pago";
+  const [cadGoalsRes, adPendingRes, adRepliedRes, adWeekRes, weekApproachRes] = await Promise.all([
+    supabase
+      .from("crm_goals")
+      .select("metric, target")
+      .is("owner_id", null)
+      .in("metric", ["daily_ad_replies", "weekly_ad_leads", "weekly_approaches"]),
+    supabase
+      .from("crm_opportunities")
+      .select("id, temperature, crm_companies(name), crm_contacts(name, whatsapp, phone)")
+      .eq("status", "aberta")
+      .eq("acquisition_channel", AD_CHANNEL)
+      .is("first_contact_at", null)
+      .or(mine)
+      .order("created_at")
+      .limit(30),
+    supabase
+      .from("crm_opportunities")
+      .select("id", { count: "exact", head: true })
+      .eq("acquisition_channel", AD_CHANNEL)
+      .eq("responsible_id", personId)
+      .gte("first_contact_at", startIso),
+    supabase
+      .from("crm_opportunities")
+      .select("id", { count: "exact", head: true })
+      .eq("acquisition_channel", AD_CHANNEL)
+      .gte("created_at", week.startIso)
+      .lt("created_at", week.endIso),
+    supabase
+      .from("crm_opportunities")
+      .select("id", { count: "exact", head: true })
+      .eq("responsible_id", personId)
+      .gte("first_contact_at", week.startIso)
+      .lt("first_contact_at", week.endIso),
+  ]);
+  const cadGoals = Object.fromEntries(
+    ((cadGoalsRes.data as { metric: string; target: number }[] | null) ?? []).map((g) => [g.metric, Number(g.target)])
+  );
+  type AdRow = {
+    id: string;
+    temperature: string | null;
+    crm_companies: { name: string } | { name: string }[] | null;
+    crm_contacts: { name: string | null; whatsapp: string | null; phone: string | null } | { name: string | null; whatsapp: string | null; phone: string | null }[] | null;
+  };
+  const ads = {
+    replyGoal: cadGoals.daily_ad_replies ?? 0,
+    repliedToday: adRepliedRes.count ?? 0,
+    pending: ((adPendingRes.data as unknown as AdRow[] | null) ?? []).map((o) => ({
+      opportunityId: o.id,
+      companyName: one(o.crm_companies)?.name ?? "Lead",
+      contactName: one(o.crm_contacts)?.name ?? null,
+      temperature: o.temperature,
+      whatsapp: one(o.crm_contacts)?.whatsapp ?? one(o.crm_contacts)?.phone ?? null,
+    })),
+    weeklyGoal: cadGoals.weekly_ad_leads ?? 0,
+    receivedWeek: adWeekRes.count ?? 0,
+  };
+
   const data: DiarioData = {
     personId,
     people: crm.canSeeAll ? members.map((m) => ({ id: m.id, name: m.full_name })) : [],
@@ -447,7 +506,13 @@ export default async function CrmDiarioPage({ searchParams }: { searchParams: Pr
     stageOptions,
     canEditGoals: access.isFullAdmin,
     sales,
-    approach: { goal: approachGoal, done: approachedRes.count ?? 0, picks },
+    approach: {
+      goal: approachGoal,
+      done: approachedRes.count ?? 0,
+      picks,
+      weekly: { goal: cadGoals.weekly_approaches ?? approachGoal * 5, done: weekApproachRes.count ?? 0 },
+    },
+    ads,
     overdue,
     followupColumns,
     prepTasks,

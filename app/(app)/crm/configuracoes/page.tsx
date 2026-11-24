@@ -21,7 +21,7 @@ export default async function ConfiguracoesPage() {
       .from("crm_goals")
       .select("metric, target")
       .is("owner_id", null)
-      .in("metric", ["daily_approaches", "weekly_new_leads", ...OLYMPIC_KEYS]),
+      .in("metric", ["daily_approaches", "weekly_approaches", "weekly_new_leads", "weekly_ad_leads", "daily_ad_replies", ...OLYMPIC_KEYS]),
     supabase.from("crm_followup_rules").select("id, stage_id, task_type, interval_days, repeat, daily_goal, active"),
     supabase.from("crm_stages").select("id, name, pipeline_id, kind, position").order("position"),
     supabase.from("crm_pipelines").select("id, name").order("position"),
@@ -50,6 +50,9 @@ export default async function ConfiguracoesPage() {
       segment={settings.segment}
       approaches={approaches}
       weekly={goals.weekly_new_leads ?? approaches * 5}
+      weeklyApproaches={goals.weekly_approaches ?? approaches * 5}
+      weeklyAdLeads={goals.weekly_ad_leads ?? 0}
+      dailyAdReplies={goals.daily_ad_replies ?? 0}
       olympic={readOlympicSettings(goals)}
       salesMode={settings.salesMode}
       kpiTargets={kpiTargets}
