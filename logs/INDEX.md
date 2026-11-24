@@ -28,3 +28,4 @@
 | Link de acesso passa pelo CRM (token_hash) e não é gasto por prévia; botão Novo link de acesso para quem ainda não entrou | 23 |
 | Modo contratos no sistema todo: conta fechamento sem valor, fluxo/Diário/Visão Geral/metas sem preço, Contrato fechado sem modal de pagamento | 24 |
 | Cadência: abordagens por semana, meta de leads de anúncio e responder leads de anúncio (Configurações + Diário); follow-ups acompanham as etapas do fluxo | 25 |
+| Meta e cartão Leads de anúncio recebidos (Metas do mês e Visão Geral) | 26 |

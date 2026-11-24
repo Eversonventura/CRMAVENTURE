@@ -36,6 +36,7 @@ export type GoalMetricDef = {
 
 export const GOAL_METRICS: GoalMetricDef[] = [
   { key: "leads_recebidos", label: "Leads recebidos", unit: "count", direction: "higher", scales: true, fallback: 60 },
+  { key: "leads_anuncio", label: "Leads de anúncio recebidos", unit: "count", direction: "higher", scales: true, fallback: 30 },
   { key: "reunioes_realizadas", label: "Reuniões realizadas", unit: "count", direction: "higher", scales: true, fallback: 8 },
   { key: "propostas_apresentadas", label: "Propostas apresentadas", unit: "count", direction: "higher", scales: true, fallback: 6 },
   { key: "fechamentos", label: "Negócios fechados", unit: "count", direction: "higher", scales: true, fallback: 3 },

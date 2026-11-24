@@ -197,7 +197,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
 
   const [
     goalsRes, stagesRes, pipelinesRes, membersRes,
-    leadsPeriod, leadsToday, openRes, closedRes, lostRes,
+    leadsPeriod, leadsAdPeriod, leadsToday, openRes, closedRes, lostRes,
     meetingsDone, meetingsScheduled, overdueRes, historyRes, todayTasksRes,
     recRes, closedOppsRes,
   ] = await Promise.all([
@@ -206,6 +206,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
     supabase.from("crm_pipelines").select("id, name").order("position"),
     supabase.rpc("team_member_picker_options"),
     supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).gte("created_at", startIso).lt("created_at", endIso),
+    supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("acquisition_channel", "Tráfego pago").gte("created_at", startIso).lt("created_at", endIso),
     supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).gte("created_at", today.startIso).lt("created_at", today.endIso),
     supabase.from("crm_opportunities").select("stage_id, estimated_value").eq("status", "aberta").limit(2000),
     supabase
@@ -366,6 +367,7 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
 
   const cards: { key: string | null; label: string; value: number; unit: "count" | "money" | "percent" | "days"; note?: string }[] = [
     { key: "leads_recebidos", label: "Leads recebidos", value: leadsPeriod.count ?? 0, unit: "count" },
+    { key: "leads_anuncio", label: "Leads de anúncio recebidos", value: leadsAdPeriod.count ?? 0, unit: "count" },
     { key: null, label: "Leads novos hoje", value: leadsToday.count ?? 0, unit: "count" },
     { key: null, label: "Oportunidades abertas", value: open.length, unit: "count", note: "agora" },
     { key: null, label: "Reuniões agendadas", value: meetingsScheduled.count ?? 0, unit: "count", note: "agora" },
@@ -384,6 +386,8 @@ export default async function CrmVisaoGeralPage({ searchParams }: { searchParams
   // Fluxo enxuto (sem etapa de proposta): o cartão "Propostas apresentadas" ficaria sempre zerado, então sai.
   const visibleCards = cards
     .filter((c) => c.key !== "propostas_apresentadas" || proposalStageIds.size > 0)
+    // Leads de anúncio: só aparece se a conta recebe leads de anúncio ou definiu meta.
+    .filter((c) => c.key !== "leads_anuncio" || (leadsAdPeriod.count ?? 0) > 0 || targets.leads_anuncio !== undefined)
     // Meta por contratos: sem valores (receita, ticket médio e valor em negociação saem).
     .filter((c) => !byContracts || !(c.key === "receita_fechada" || c.key === "ticket_medio" || c.label === "Valor em negociação"))
     .map((c) => (byContracts && c.key === "fechamentos" ? { ...c, label: "Contratos fechados" } : c));
