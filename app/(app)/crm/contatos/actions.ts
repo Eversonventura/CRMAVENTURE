@@ -7,7 +7,7 @@ import { findOrCreateCompany, findOrCreateContact, type CrmFormState } from "../
 import { resolveContactName } from "../contactUtils";
 import { COMPANY_KEYS, pickContactFields, pickStrings } from "../form-fields";
 import { getCrmSettings } from "../settings";
-import type { SystemFieldKey } from "./import-parse";
+import { normalizeText, parseSheetDate, parseSheetNumber, type SystemFieldKey } from "./import-parse";
 
 // Etapa de entrada dos leads novos: o pipeline pode ter mais de uma etapa
 // com role `lead` (ex.: "Desbrava"); leads cadastrados entram em "Novo lead".
@@ -97,71 +97,164 @@ export async function deleteCompaniesAction(companyIds: string[]) {
   return {};
 }
 
-export async function confirmImport(
-  rows: string[][],
-  mapping: (SystemFieldKey | null)[]
-): Promise<{ error?: string; created: number; skipped: number }> {
+// Importação em lotes (o navegador manda ~25 linhas por vez; cada chamada cabe no tempo do servidor).
+export type ImportResult = { error?: string; created: number; skipped: number; duplicates: number; unknownChannels: string[] };
+
+export async function confirmImport(rows: string[][], mapping: (SystemFieldKey | null)[]): Promise<ImportResult> {
+  const empty = (error: string): ImportResult => ({ error, created: 0, skipped: 0, duplicates: 0, unknownChannels: [] });
+  if (rows.length > 60) return empty("Lote grande demais. Atualize a página e tente de novo.");
   const supabase = await createClient();
+  const settings = await getCrmSettings();
+  const isB2C = settings.businessModel === "b2c";
 
   // B2B precisa de "Nome da empresa"; em B2C (sem empresa) vale o nome do contato.
-  const isB2C = (await getCrmSettings()).businessModel === "b2c";
-  if (mapping.indexOf("company_name") === -1 && !(isB2C && mapping.indexOf("contact_name") !== -1)) {
-    return { error: isB2C ? "Nenhuma coluna mapeada pra Nome do contato." : "Nenhuma coluna mapeada pra Nome da empresa.", created: 0, skipped: 0 };
+  const has = (key: SystemFieldKey) => mapping.indexOf(key) !== -1;
+  if (!has("company_name") && !(isB2C && has("contact_name"))) {
+    return empty(isB2C ? "Nenhuma coluna mapeada pra Nome do contato." : "Nenhuma coluna mapeada pra Nome da empresa.");
   }
 
-  // Etapa de entrada = a de role `lead` do pipeline padrão (o nome pode
-  // ter sido trocado).
   const defaultPipelineId = await getDefaultPipelineId(supabase);
-  const stage = defaultPipelineId ? await findNewLeadStage(supabase, defaultPipelineId) : null;
-  if (!stage) return { error: "Etapa de entrada (Novo lead) não encontrada.", created: 0, skipped: 0 };
+  if (!defaultPipelineId) return empty("Fluxo não encontrado.");
+  const leadStage = await findNewLeadStage(supabase, defaultPipelineId);
+  if (!leadStage) return empty("Etapa de entrada (Lead) não encontrada.");
+
+  // Etapas do fluxo e vendedores da conta, para casar o texto da planilha pelo nome.
+  const [{ data: stageRows }, { data: memberRows }] = await Promise.all([
+    supabase.from("crm_stages").select("id, name").eq("pipeline_id", defaultPipelineId),
+    supabase.rpc("team_member_picker_options"),
+  ]);
+  const stageByName = new Map(((stageRows as { id: string; name: string }[] | null) ?? []).map((st) => [normalizeText(st.name), st.id]));
+  const memberByName = new Map(((memberRows as { id: string; full_name: string }[] | null) ?? []).map((m) => [normalizeText(m.full_name), m.id]));
+  const channelByName = new Map(settings.channels.map((c) => [normalizeText(c.name), c.name]));
+  const fallbackChannel = channelByName.get("outro") ?? null;
 
   const get = (row: string[], key: SystemFieldKey) => {
     const idx = mapping.indexOf(key);
     return idx === -1 ? "" : (row[idx] ?? "").trim();
   };
+  // "~", "-" e vazio são "sem informação" nas planilhas.
+  const real = (v: string) => (v === "" || v === "~" || v === "-" || v === "–" ? "" : v);
 
   let created = 0;
   let skipped = 0;
+  let duplicates = 0;
+  const unknownChannels = new Set<string>();
 
   for (const row of rows) {
-    const companyName = get(row, "company_name") || (isB2C ? get(row, "contact_name") : "");
+    const phone = real(get(row, "phone"));
+    const whatsapp = real(get(row, "whatsapp"));
+    const contactName = real(get(row, "contact_name"));
+    // Lead sem nome mas com telefone não se perde: entra como "Lead <telefone>".
+    const personName = contactName || (phone || whatsapp ? `Lead ${phone || whatsapp}` : "");
+    const companyName = real(get(row, "company_name")) || (isB2C ? personName : "");
     if (!companyName) {
       skipped++;
       continue;
     }
 
     try {
-      const companyId = await findOrCreateCompany(supabase, companyName, {
-        city: get(row, "city") || null,
-        postal_code: get(row, "postal_code") || null,
-        segment: get(row, "segment") || null,
-        website: get(row, "website") || null,
-        instagram: get(row, "instagram") || null,
-        other_social_url: get(row, "other_social_url") || null,
-        google_business_url: get(row, "google_business_url") || null,
-        bio_link: get(row, "bio_link") || null,
-        cnpj: get(row, "cnpj") || null,
-      });
+      // Já existe um lead com esse telefone/WhatsApp? Não duplica (importar a mesma planilha de novo é seguro).
+      const known = [phone, whatsapp].filter(Boolean);
+      if (known.length > 0) {
+        // Aspas protegem parênteses, vírgulas e espaços do telefone no filtro.
+        const q = (p: string) => `"${p.replace(/"/g, "")}"`;
+        const filter = known.flatMap((p) => [`phone.eq.${q(p)}`, `whatsapp.eq.${q(p)}`]).join(",");
+        const { data: dup } = await supabase.from("crm_contacts").select("id").or(filter).limit(1);
+        if (dup && dup.length > 0) {
+          duplicates++;
+          continue;
+        }
+      }
 
-      const contactName = get(row, "contact_name");
-      const contactId = contactName
-        ? await findOrCreateContact(supabase, companyId, contactName, {
-            role_title: get(row, "role_title") || null,
-            phone: get(row, "phone") || null,
-            whatsapp: get(row, "whatsapp") || null,
-            email: get(row, "email") || null,
-          })
-        : null;
+      const entryDate = parseSheetDate(get(row, "entry_date"));
+      const createdAt = entryDate ? `${entryDate}T12:00:00-03:00` : null;
 
-      await supabase.from("crm_opportunities").insert({
-        company_id: companyId,
-        contact_id: contactId,
-        stage_id: stage.id,
-        acquisition_channel: "Outro",
-        first_touch_channel: "Outro",
-        last_touch_channel: "Outro",
-        search_reason: "Lead importado de planilha.",
-      });
+      // Origem: casa com as origens da conta (sem acento nem maiúsculas); fora da lista, guarda como veio.
+      const channelRaw = real(get(row, "acquisition_channel"));
+      let channel: string | null = fallbackChannel;
+      if (channelRaw) {
+        const matched = channelByName.get(normalizeText(channelRaw));
+        channel = matched ?? channelRaw;
+        if (!matched) unknownChannels.add(channelRaw);
+      }
+
+      const stageRaw = real(get(row, "stage"));
+      const stageId = (stageRaw && stageByName.get(normalizeText(stageRaw))) || leadStage.id;
+      const responsibleRaw = real(get(row, "responsible"));
+      const responsibleId = responsibleRaw ? (memberByName.get(normalizeText(responsibleRaw)) ?? null) : null;
+      const tempRaw = normalizeText(real(get(row, "temperature")));
+      const temperature = ["quente", "morno", "frio"].includes(tempRaw) ? tempRaw : null;
+      const value = settings.salesMode === "contratos" ? null : parseSheetNumber(real(get(row, "estimated_value")));
+
+      const companyFields = {
+        city: real(get(row, "city")) || null,
+        postal_code: real(get(row, "postal_code")) || null,
+        segment: real(get(row, "segment")) || null,
+        website: real(get(row, "website")) || null,
+        instagram: real(get(row, "instagram")) || null,
+        other_social_url: real(get(row, "other_social_url")) || null,
+        google_business_url: real(get(row, "google_business_url")) || null,
+        bio_link: real(get(row, "bio_link")) || null,
+        cnpj: real(get(row, "cnpj")) || null,
+        internal_notes: real(get(row, "notes")) || null,
+      };
+      // B2C: cada pessoa é um cliente próprio (nomes iguais não se misturam); B2B: junta pelo nome da empresa.
+      let companyId: string;
+      if (isB2C) {
+        const { data: createdCompany, error } = await supabase.from("crm_companies").insert({ name: companyName, ...companyFields }).select("id").single();
+        if (error) throw new Error(error.message);
+        companyId = createdCompany.id;
+      } else {
+        companyId = await findOrCreateCompany(supabase, companyName, companyFields);
+      }
+
+      const contactFields = {
+        role_title: real(get(row, "role_title")) || null,
+        phone: phone || null,
+        whatsapp: whatsapp || null,
+        email: real(get(row, "email")) || null,
+      };
+      let contactId: string | null = null;
+      if (personName) {
+        if (isB2C) {
+          const { data: createdContact, error } = await supabase.from("crm_contacts").insert({ company_id: companyId, name: personName, ...contactFields }).select("id").single();
+          if (error) throw new Error(error.message);
+          contactId = createdContact.id;
+        } else {
+          contactId = await findOrCreateContact(supabase, companyId, personName, contactFields);
+        }
+      }
+
+      const { data: opp, error: oppError } = await supabase
+        .from("crm_opportunities")
+        .insert({
+          company_id: companyId,
+          contact_id: contactId,
+          stage_id: stageId,
+          acquisition_channel: channel,
+          first_touch_channel: channel,
+          last_touch_channel: channel,
+          priority: real(get(row, "priority")) || null,
+          temperature,
+          responsible_id: responsibleId,
+          estimated_value: value,
+          search_reason: "Lead importado de planilha.",
+          ...(createdAt ? { created_at: createdAt, entered_at: createdAt } : {}),
+        })
+        .select("id")
+        .single();
+      if (oppError) throw new Error(oppError.message);
+
+      // "Comentários e atividade" da planilha vira anotação na linha do tempo do lead.
+      const comment = real(get(row, "activity"));
+      if (comment && opp) {
+        await supabase.from("crm_activities").insert({
+          opportunity_id: opp.id,
+          type: "anotacao",
+          content: comment.slice(0, 1000),
+          ...(createdAt ? { occurred_at: createdAt } : {}),
+        });
+      }
       created++;
     } catch {
       skipped++;
@@ -171,5 +264,5 @@ export async function confirmImport(
   revalidatePath("/crm/contatos");
   revalidatePath("/crm/funil");
   revalidatePath("/crm/visao-geral");
-  return { created, skipped };
+  return { created, skipped, duplicates, unknownChannels: Array.from(unknownChannels) };
 }

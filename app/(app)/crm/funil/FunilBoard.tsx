@@ -60,6 +60,7 @@ export type FunilOpportunityRow = {
   companyName: string;
   contactName: string | null;
   stageEnteredAt: string;
+  createdAt: string;
   website: string | null;
   segment: string | null;
   city: string | null;
@@ -241,6 +242,26 @@ export function FunilBoard({
   const router = useRouter();
   const byContracts = useCrmSettings().salesMode === "contratos";
   const [contractMsg, setContractMsg] = useState<string | null>(null);
+  // Ordem dos cards em cada etapa: pela data de entrada do lead. Padrão: os que entraram primeiro em cima e os
+  // mais recentes embaixo; o botão inverte (e lembra a escolha neste navegador).
+  const [newestFirst, setNewestFirst] = useState(false);
+  useEffect(() => {
+    try {
+      setNewestFirst(localStorage.getItem("crm_fluxo_ordem") === "recentes");
+    } catch {
+      // sem acesso ao armazenamento: fica no padrão
+    }
+  }, []);
+  function toggleOrder() {
+    setNewestFirst((prev) => {
+      try {
+        localStorage.setItem("crm_fluxo_ordem", prev ? "antigos" : "recentes");
+      } catch {
+        // idem
+      }
+      return !prev;
+    });
+  }
   const searchParams = useSearchParams();
   const [managing, setManaging] = useState<"stages" | "pipelines" | null>(null);
   const [items, setItems] = useState(opportunities);
@@ -353,6 +374,14 @@ export function FunilBoard({
             </select>
           )}
           <p className="text-sm text-muted">Arraste os cards entre as etapas.</p>
+          <button
+            type="button"
+            onClick={toggleOrder}
+            className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-ink transition hover:border-brand"
+            title="Os cards de cada etapa ficam em ordem de data de entrada do lead"
+          >
+            Ordem: {newestFirst ? "mais recentes primeiro" : "mais antigos primeiro"}
+          </button>
         </div>
         <div className="flex items-center gap-2">
           {canManage && (
@@ -413,7 +442,9 @@ export function FunilBoard({
             <StageColumn
               key={stage.id}
               stage={stage}
-              opportunities={items.filter((o) => o.stageId === stage.id)}
+              opportunities={items
+                .filter((o) => o.stageId === stage.id)
+                .sort((a, b) => (newestFirst ? -1 : 1) * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))}
               onCardClick={(opp) => setModalState(opp)}
             />
           ))}

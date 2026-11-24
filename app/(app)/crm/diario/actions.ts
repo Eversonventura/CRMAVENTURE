@@ -119,7 +119,7 @@ export async function getOpportunityForModal(
   const { data: o } = await supabase
     .from("crm_opportunities")
     .select(
-      "id, company_id, contact_id, stage_id, status, estimated_value, service_interest, acquisition_channel, event_name, close_probability, search_reason, main_problem, desired_objective, available_budget, decision_maker, start_deadline, referred_by, referral_related_client, referral_type, referral_date, referral_result, ad_platform, campaign, ad_set, ad, keyword, landing_page, form_name, responsible_id, temperature, expected_close_date, entered_at, created_at, crm_stages(pipeline_id), crm_companies(name, website, segment, city, employee_count, approx_revenue, instagram, cnpj, postal_code, google_business_url, other_social_url, bio_link, internal_notes), crm_contacts(name, role_title, phone, whatsapp, email, contact_preference)"
+      "id, company_id, contact_id, stage_id, status, estimated_value, service_interest, acquisition_channel, event_name, close_probability, search_reason, main_problem, desired_objective, available_budget, decision_maker, start_deadline, referred_by, referral_related_client, referral_type, referral_date, referral_result, ad_platform, campaign, ad_set, ad, keyword, landing_page, form_name, responsible_id, temperature, priority, expected_close_date, entered_at, created_at, crm_stages(pipeline_id), crm_companies(name, website, segment, city, employee_count, approx_revenue, instagram, cnpj, postal_code, google_business_url, other_social_url, bio_link, internal_notes), crm_contacts(name, role_title, phone, whatsapp, email, contact_preference)"
     )
     .eq("id", opportunityId)
     .single();
@@ -167,6 +167,7 @@ export async function getOpportunityForModal(
       companyName: company?.name ?? "—",
       contactName: contact?.name ?? null,
       stageEnteredAt: lastMove?.changed_at ?? o.created_at,
+      createdAt: o.created_at,
       website: company?.website ?? null,
       segment: company?.segment ?? null,
       city: company?.city ?? null,

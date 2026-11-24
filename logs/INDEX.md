@@ -36,3 +36,5 @@
 | Diário de outra pessoa continua só leitura, mas com links de WhatsApp liberados | 31 |
 | Meta olímpica visível para todos (admin, gestor, vendedor), mês a mês, com total da equipe; função crm_month_deals; migration 008 | 32 |
 | Origens dos leads personalizáveis por conta (adicionar, remover, marcar anúncio) em Configurações; migration 009 | 33 |
+| Importação de planilha: reconhece Nome, Telefone, Dia de entrada, Origem, Prioridade, Observação, Comentários (B2B e B2C), em lotes, sem duplicar por telefone | 34 |
+| Campo Data de entrada do lead; prioridade deixa de ser apagada ao editar o lead | 35 |

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/access";
-import { DEFAULT_CHANNELS, type Channel } from "./channels";
+import { DEFAULT_CHANNELS, sortChannels, type Channel } from "./channels";
 import { DEFAULT_SETTINGS, type BusinessModel, type CrmSettings, type SalesMode } from "./business";
 
 // Configurações da conta ativa (modelo comercial e segmento). Qualquer membro lê;
@@ -35,7 +35,7 @@ export const getCrmSettings = cache(async (): Promise<CrmSettings> => {
     .order("created_at");
   const channels: Channel[] =
     channelRows && channelRows.length > 0
-      ? (channelRows as { name: string; is_ad: boolean }[]).map((c) => ({ name: c.name, isAd: c.is_ad }))
+      ? sortChannels((channelRows as { name: string; is_ad: boolean }[]).map((c) => ({ name: c.name, isAd: c.is_ad })))
       : DEFAULT_CHANNELS;
 
   if (!data) return { ...DEFAULT_SETTINGS, salesMode, channels };

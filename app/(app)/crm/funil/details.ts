@@ -1,5 +1,6 @@
 // Campos de qualificação e origem do card (sem "use client": usado pelo servidor).
 export type OpportunityDetails = {
+  priority: string | null;
   close_probability: number | null;
   search_reason: string | null;
   main_problem: string | null;
@@ -21,11 +22,12 @@ export type OpportunityDetails = {
   form_name: string | null;
 };
 
-export const DETAIL_COLUMNS = "close_probability, search_reason, main_problem, desired_objective, available_budget, decision_maker, start_deadline, referred_by, referral_related_client, referral_type, referral_date, referral_result, ad_platform, campaign, ad_set, ad, keyword, landing_page, form_name";
+export const DETAIL_COLUMNS = "priority, close_probability, search_reason, main_problem, desired_objective, available_budget, decision_maker, start_deadline, referred_by, referral_related_client, referral_type, referral_date, referral_result, ad_platform, campaign, ad_set, ad, keyword, landing_page, form_name";
 
 export function readDetails(o: Record<string, unknown>): OpportunityDetails {
   const pick = (k: string) => (o[k] ?? null) as never;
   return {
+    priority: pick("priority"),
     close_probability: pick("close_probability"),
     search_reason: pick("search_reason"),
     main_problem: pick("main_problem"),

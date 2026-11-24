@@ -4,6 +4,10 @@ import { ACQUISITION_CHANNELS } from "./types";
 export type Channel = { name: string; isAd: boolean };
 
 // "Tráfego pago" é a origem de anúncio padrão (alimenta "Responder leads de anúncio").
-export const DEFAULT_CHANNELS: Channel[] = ACQUISITION_CHANNELS.map((name) => ({ name, isAd: name === "Tráfego pago" }));
+// Sempre em ordem alfabética (sem diferenciar acento nem maiúscula): origem nova entra no lugar certo sozinha.
+export const sortChannels = (channels: Channel[]) =>
+  [...channels].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+
+export const DEFAULT_CHANNELS: Channel[] = sortChannels(ACQUISITION_CHANNELS.map((name) => ({ name, isAd: name === "Tráfego pago" })));
 
 export const adChannelNames = (channels: Channel[]) => channels.filter((c) => c.isAd).map((c) => c.name);

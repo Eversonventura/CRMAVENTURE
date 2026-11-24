@@ -349,12 +349,24 @@ export function OpportunityModal({
                 </select>
               </Field>
               <Field label="Prioridade">
-                <select name="priority" defaultValue="" className={inputClass}>
+                <select name="priority" defaultValue={opportunity?.details?.priority ?? ""} className={inputClass}>
                   <option value="">Selecione...</option>
                   <option value="baixa">Baixa</option>
                   <option value="media">Média</option>
                   <option value="alta">Alta</option>
+                  {/* Prioridade importada da planilha (texto livre) continua aparecendo */}
+                  {opportunity?.details?.priority && !["baixa", "media", "alta"].includes(opportunity.details.priority) && (
+                    <option value={opportunity.details.priority}>{opportunity.details.priority}</option>
+                  )}
                 </select>
+              </Field>
+              <Field label="Data de entrada do lead">
+                <input
+                  name="entry_date"
+                  type="date"
+                  defaultValue={opportunity?.createdAt ? new Date(new Date(opportunity.createdAt).getTime() - 3 * 3600000).toISOString().slice(0, 10) : new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10)}
+                  className={inputClass}
+                />
               </Field>
               <Field label="Motivo da busca">
                 <input name="search_reason" defaultValue={opportunity?.details?.search_reason ?? ""} className={inputClass} />

@@ -4,8 +4,9 @@ import { useRef, useState, useTransition } from "react";
 import { ModalBackdrop } from "@/components/ModalBackdrop";
 import { confirmImport } from "./actions";
 import { useCrmSettings } from "../CrmSettingsContext";
+import { showCompanyOnlineFields } from "../business";
 import {
-  SYSTEM_FIELDS,
+  importFieldsFor,
   parseImportFileClient,
   type ParsedImportFile,
   type SystemFieldKey,
@@ -13,13 +14,18 @@ import {
 
 type Step = "upload" | "mapping" | "done";
 
+const BATCH = 25; // linhas por chamada ao servidor
+
 export function ImportModal({ onClose }: { onClose: () => void }) {
-  const isB2C = useCrmSettings().businessModel === "b2c";
+  const settings = useCrmSettings();
+  const isB2C = settings.businessModel === "b2c";
+  const fields = importFieldsFor({ isB2C, showOnline: showCompanyOnlineFields(settings), byContracts: settings.salesMode === "contratos" });
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [step, setStep] = useState<Step>("upload");
   const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
   const [mapping, setMapping] = useState<(SystemFieldKey | "")[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ created: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ created: number; skipped: number; duplicates: number; unknownChannels: string[] } | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +43,8 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
         return;
       }
       setParsed(res);
-      setMapping(res.suggestedMapping.map((m) => m ?? ""));
+      // Só sugere campos que o formulário desta conta usa (B2C sem empresa, etc.).
+      setMapping(res.suggestedMapping.map((m) => (m && fields.some((f) => f.key === m) ? m : "")));
       setStep("mapping");
     });
   }
@@ -46,12 +53,31 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
     if (!parsed) return;
     startTransition(async () => {
       const finalMapping = mapping.map((m) => (m === "" ? null : m));
-      const res = await confirmImport(parsed.rows, finalMapping);
-      if (res.error) {
-        setUploadError(res.error);
+      const total = parsed.rows.length;
+      const sum = { created: 0, skipped: 0, duplicates: 0, unknownChannels: [] as string[] };
+      setUploadError(null);
+      try {
+        // Em lotes pequenos: planilhas grandes não estouram o tempo do servidor e a tela mostra o andamento.
+        for (let i = 0; i < total; i += BATCH) {
+          setProgress({ done: i, total });
+          const res = await confirmImport(parsed.rows.slice(i, i + BATCH), finalMapping);
+          if (res.error) {
+            setUploadError(res.error);
+            setProgress(null);
+            return;
+          }
+          sum.created += res.created;
+          sum.skipped += res.skipped;
+          sum.duplicates += res.duplicates;
+          for (const c of res.unknownChannels) if (!sum.unknownChannels.includes(c)) sum.unknownChannels.push(c);
+        }
+      } catch {
+        setUploadError(`A importação parou no meio (${sum.created} leads já entraram). Confira a conexão e importe de novo: os que já entraram são reconhecidos pelo telefone e não duplicam.`);
+        setProgress(null);
         return;
       }
-      setResult({ created: res.created, skipped: res.skipped });
+      setProgress(null);
+      setResult(sum);
       setStep("done");
     });
   }
@@ -67,9 +93,10 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
         {step === "upload" && (
           <div className="mt-5 space-y-3">
             <p className="text-sm text-muted">
-              Aceita .csv e .xlsx. A primeira linha precisa ter os nomes das
-              colunas. (.xls binário antigo não é suportado — salve como
-              .xlsx primeiro.)
+              Aceita .csv e .xlsx (até 1000 linhas). A primeira linha precisa ter os nomes das
+              colunas: o sistema reconhece sozinho colunas como Nome, Telefone, Dia de entrada,
+              Origem, Prioridade, Observação e Comentários, e você confere antes de importar.
+              (.xls binário antigo não é suportado — salve como .xlsx primeiro.)
             </p>
             <input
               ref={fileInputRef}
@@ -92,7 +119,7 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
             </p>
             {parsed.truncated && (
               <p className="text-sm text-brand">
-                A planilha tem mais de 500 linhas — só as 500 primeiras serão
+                A planilha tem mais de 1000 linhas — só as 1000 primeiras serão
                 importadas.
               </p>
             )}
@@ -116,7 +143,7 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
                           className="mt-1 w-full rounded-md border border-border bg-white px-1.5 py-1 text-xs text-ink outline-none focus:border-brand"
                         >
                           <option value="">Ignorar coluna</option>
-                          {SYSTEM_FIELDS.map((f) => (
+                          {fields.map((f) => (
                             <option key={f.key} value={f.key}>
                               {f.label}
                             </option>
@@ -163,7 +190,9 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
                 className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand/90 disabled:opacity-60"
               >
                 {isPending
-                  ? "Importando..."
+                  ? progress
+                    ? `Importando ${Math.min(progress.done + BATCH, progress.total)} de ${progress.total}...`
+                    : "Importando..."
                   : `Importar ${parsed.rows.length} linhas`}
               </button>
             </div>
@@ -173,12 +202,24 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
         {step === "done" && result && (
           <div className="mt-5 space-y-4">
             <p className="text-sm text-ink">
-              {result.created} lead{result.created === 1 ? "" : "s"} criado
-              {result.created === 1 ? "" : "s"} como oportunidade em "Novo
-              lead".
-              {result.skipped > 0 &&
-                ` ${result.skipped} linha${result.skipped === 1 ? "" : "s"} sem nome de empresa foi${result.skipped === 1 ? "" : "ram"} ignorada${result.skipped === 1 ? "" : "s"}.`}
+              {result.created} lead{result.created === 1 ? "" : "s"} importado{result.created === 1 ? "" : "s"} para o fluxo.
             </p>
+            {result.duplicates > 0 && (
+              <p className="text-xs text-muted">
+                {result.duplicates} já existia{result.duplicates === 1 ? "" : "m"} (mesmo telefone ou WhatsApp) e não {result.duplicates === 1 ? "foi" : "foram"} duplicado{result.duplicates === 1 ? "" : "s"}.
+              </p>
+            )}
+            {result.skipped > 0 && (
+              <p className="text-xs text-muted">
+                {result.skipped} linha{result.skipped === 1 ? "" : "s"} sem nome e sem telefone {result.skipped === 1 ? "foi ignorada" : "foram ignoradas"}.
+              </p>
+            )}
+            {result.unknownChannels.length > 0 && (
+              <p className="text-xs text-muted">
+                Origens que não estão na sua lista (ficaram como vieram na planilha): {result.unknownChannels.join(", ")}. Para
+                usá-las como origem oficial, adicione em Configurações → Origens dos leads.
+              </p>
+            )}
             <div className="flex justify-end">
               <button
                 onClick={onClose}

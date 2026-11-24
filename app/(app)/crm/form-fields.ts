@@ -69,6 +69,9 @@ export function pickOpportunityFields(formData: FormData, opts: Opts = {}) {
     ...pickStrings(formData, OPP_STRING_KEYS, opts),
     ...pickNumbers(formData, OPP_NUMBER_KEYS, opts),
   };
+  // Data de entrada do lead (campo de data do formulário) → created_at, ao meio-dia de Brasília.
+  const entry = ((formData.get("entry_date") as string | null) ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(entry)) out.created_at = `${entry}T12:00:00-03:00`;
   const clearOrigin = formData.has("acquisition_channel");
   for (const key of OPP_ORIGIN_KEYS) {
     const v = ((formData.get(key) as string | null) ?? "").trim() || null;

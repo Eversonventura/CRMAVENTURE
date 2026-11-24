@@ -158,6 +158,7 @@ export async function createOpportunityAction(
         stage_id: stageId,
         first_touch_channel: channel,
         last_touch_channel: channel,
+        ...(fields.created_at ? { entered_at: fields.created_at } : {}),
         ...fields,
       })
       .select("id")
@@ -247,9 +248,15 @@ export async function updateOpportunityAction(
 
       const { data: before } = await supabase
         .from("crm_opportunities")
-        .select("acquisition_channel, stage_id")
+        .select("acquisition_channel, stage_id, created_at")
         .eq("id", id)
         .single();
+
+      // Data de entrada: só grava se a pessoa mudou o dia (salvar sem mexer não altera a hora original).
+      if (fields.created_at && before?.created_at) {
+        const brtDay = new Date(new Date(before.created_at).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+        if (String(fields.created_at).slice(0, 10) === brtDay) delete fields.created_at;
+      }
 
       // first_touch_channel nunca muda depois de gravado; last_touch só
       // atualiza quando o canal informado agora é diferente do anterior.
