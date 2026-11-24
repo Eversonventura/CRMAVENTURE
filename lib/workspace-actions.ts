@@ -118,9 +118,11 @@ export async function inviteMember(workspaceId: string, email: string, role: str
   let link: string | undefined;
   const invite = await admin.generateLink({ type: "invite", email: to, options: { redirectTo } });
   link = invite.data?.properties?.action_link;
+  let linkError = invite.error?.message;
   if (!link) {
     const magic = await admin.generateLink({ type: "magiclink", email: to, options: { redirectTo } });
     link = magic.data?.properties?.action_link;
+    linkError = magic.error?.message ?? linkError;
   }
   if (link) {
     return {
@@ -129,7 +131,7 @@ export async function inviteMember(workspaceId: string, email: string, role: str
     };
   }
   return {
-    message: `Convite registrado, mas o e-mail não saiu (${mailError.message}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
+    message: `Convite registrado, mas o e-mail não saiu (${mailError.message}) e o link de acesso também não pôde ser gerado (${linkError ?? "sem detalhe"}). Peça para a pessoa criar o login com esse e-mail; a conta aparece sozinha.`,
   };
 }
 
