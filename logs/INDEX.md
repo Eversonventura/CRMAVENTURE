@@ -41,3 +41,4 @@
 | Fluxo ordenado pela data de entrada do lead (com botão para inverter); origens em ordem alfabética | 36 |
 | Gestor cria e edita etapas do fluxo (pipelines só administrador); migration 010 | 37 |
 | Papéis do processo: só Lead, Prospect, Qualificado, Desqualificado e Stand-by (conversão automática, Abordei/Respondeu, Diário, Propostas); migration 011 | 38 |
+| Leads automáticos do WhatsApp: webhook da Cloud API cadastra contato e card em Lead, origem WhatsApp/Meta Ads; migration 012 | 39 |

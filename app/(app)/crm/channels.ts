@@ -8,6 +8,6 @@ export type Channel = { name: string; isAd: boolean };
 export const sortChannels = (channels: Channel[]) =>
   [...channels].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
 
-export const DEFAULT_CHANNELS: Channel[] = sortChannels(ACQUISITION_CHANNELS.map((name) => ({ name, isAd: name === "Tráfego pago" })));
+export const DEFAULT_CHANNELS: Channel[] = sortChannels(ACQUISITION_CHANNELS.map((name) => ({ name, isAd: name === "Tráfego pago" || name === "Meta Ads" })));
 
 export const adChannelNames = (channels: Channel[]) => channels.filter((c) => c.isAd).map((c) => c.name);

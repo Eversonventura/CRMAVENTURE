@@ -20,6 +20,8 @@ export const ACQUISITION_CHANNELS = [
   "Cliente atual",
   "Parceiro",
   "Evento",
+  "Meta Ads",
+  "WhatsApp",
   "Outro",
 ] as const;
 

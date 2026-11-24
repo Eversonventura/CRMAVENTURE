@@ -41,8 +41,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthRoute = path === "/login" || path === "/cadastro";
   // /auth/*: a sessão do convite/recuperação é estabelecida no cliente (o token
-  // vem no fragmento da URL). /api/cron/*: valida CRON_SECRET na própria rota.
-  const isPublicRoute = path.startsWith("/auth/") || path.startsWith("/api/cron/");
+  // vem no fragmento da URL). /api/cron/*: valida CRON_SECRET na própria rota. /api/whatsapp/*: a Meta
+  // chama sem login; a rota confere o token de verificação (GET) e a assinatura do corpo (POST).
+  const isPublicRoute = path.startsWith("/auth/") || path.startsWith("/api/cron/") || path.startsWith("/api/whatsapp/");
 
   if (!user && !isAuthRoute && !isPublicRoute) {
     const url = request.nextUrl.clone();
